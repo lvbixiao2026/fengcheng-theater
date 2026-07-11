@@ -339,6 +339,12 @@ function handleClick(seatId, row, num) {
     return;
   }
 
+  // Clear any previous pending seats (one seat per person)
+  if (myPending.size > 0) {
+    myPending.forEach(sid => client.publish(TOPIC + sid, '', {qos:1, retain:true}));
+    myPending.clear();
+  }
+
   // Free → reserve
   const payload = JSON.stringify({pending:true, sid:mySid, ts:Date.now()});
   client.publish(TOPIC + seatId, payload, {qos:1, retain:true});
@@ -364,6 +370,13 @@ function doConfirm() {
   const name = document.getElementById('nameInput').value.trim();
   if (!name) { showToast('请输入姓名', true); return; }
   if (myPending.size === 0) return;
+
+  // Check if name already has a confirmed seat
+  const existing = Object.entries(seatState).find(([,info]) => !info.pending && info.name === name);
+  if (existing) {
+    showToast('「' + name + '」已选了 ' + existing[0].replace('-','') + '号，每人限选一个', true);
+    return;
+  }
 
   document.getElementById('confirmBtn').disabled = true;
 
