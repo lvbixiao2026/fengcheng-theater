@@ -62,6 +62,7 @@ h1{font-size:22px;color:var(--accent);text-align:center}
 <p class="sub">点击座位 · 输入微信名 · 即刻确认</p>
 <div class="stage">⬆ 舞 台 ⬆</div>
 <div class="bar">已选：<span class="val" id="cnt">0</span> / 557 座</div>
+<div class="my-info" id="myInfo" style="display:none;text-align:center;color:var(--accent);font-size:14px;font-weight:700;background:#1a3a5c;padding:6px 16px;border-radius:6px;border:1px solid #2a5a8a"></div>
 <div class="legend">
 <span><i class="lf"></i>可选</span><span><i class="lm"></i>我的</span><span><i class="lt"></i>已选</span><span><i class="lb"></i>坏座</span><span><i class="ll"></i>灯光区</span>
 </div>
@@ -90,6 +91,10 @@ h1{font-size:22px;color:var(--accent);text-align:center}
 
 var seatState={}, myPick=null, client;
 
+// Remember user's own seat across sessions
+var myName=localStorage.getItem('fc_myName')||'';
+var mySeatId=localStorage.getItem('fc_mySeat')||'';
+
 // Render now, then load MQTT
 render();
 
@@ -106,6 +111,17 @@ function initMQTT(){
     client={publish:function(){}};
   }
   render();
+}
+
+// ====== 更新顶部「我的座位」提示 ======
+function updateMyInfo(){
+  var el=document.getElementById('myInfo');
+  if(!el)return;
+  if(!mySeatId||!myName){el.style.display='none';return}
+  var st=seatState[mySeatId];
+  if(!st||st.name!==myName){el.style.display='none';return}
+  el.style.display='block';
+  el.textContent='我的座位：'+mySeatId.replace('-','')+'号 ('+myName+')';
 }
 
 function render(){
@@ -141,7 +157,9 @@ function render(){
       if(s.type==='lighting'){el.className='seat lighting';el.title='灯光区';row.appendChild(el);continue}
 
       var id=rd.label+'-'+s.number,st=seatState[id],cls='free',title=rd.label+s.number+'号';
-      if(st){cls='taken';title+=' — '+(st.name||'已选')}else if(myPick===id){cls='mine'}
+      if(st){cls='taken';title+=' — '+(st.name||'已选')}else if(myPick===id){cls='mine';title+=' — 待确认'}
+      // Highlight if this is the user's own confirmed seat
+      if(myName && mySeatId===id && st && st.name===myName) cls='mine';
       el.className='seat '+cls;
       if(!st)el.textContent=s.number;
       el.title=title;
@@ -151,10 +169,17 @@ function render(){
     g.appendChild(row);
   });
   document.getElementById('cnt').textContent=Object.keys(seatState).length;
+  // Show my seat info bar
+  updateMyInfo();
 }
 
 function onSeat(id,row,num){
-  if(seatState[id]){toast(row+num+'号 已被选',1);return}
+  var st=seatState[id];
+  // If user clicks on their own confirmed seat, show info
+  if(st && myName && mySeatId===id && st.name===myName){
+    toast('这是你的座位：'+row+num+'号',0);return
+  }
+  if(st){toast(row+num+'号 已被选',1);return}
   if(myPick===id){myPick=null;render();hidePanel();return}
   myPick=id;render();
   document.getElementById('pnlSeat').textContent=row+num+'号';
@@ -173,6 +198,10 @@ function confirmSeat(){
   var p=JSON.stringify({name:n,ts:Date.now()});
   client.publish('fengcheng-theater-557/seat/'+myPick,p,{qos:1,retain:true});
   if(typeof mqtt==='undefined')seatState[myPick]={name:n,ts:Date.now()};
+  // Remember for next visit
+  myName=n; mySeatId=myPick;
+  localStorage.setItem('fc_myName',n);
+  localStorage.setItem('fc_mySeat',myPick);
   toast('已选座 → '+n);
   myPick=null;hidePanel();render();
 }
