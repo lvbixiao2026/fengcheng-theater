@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=0.35, minimum-scale=0.2, maximum-scale=2.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=0.5, minimum-scale=0.15, maximum-scale=3.0, user-scalable=yes">
 <title>凤城剧院座次表</title>
 <meta property="og:title" content="凤城剧院座次表">
 <meta property="og:description" content="点击选座，输入微信名确认，实时同步">
@@ -55,10 +55,10 @@ body{
 /* Grid */
 .seat-grid-wrapper{overflow-x:auto;padding:6px 0 10px;width:100%;-webkit-overflow-scrolling:touch}
 .seat-grid{display:flex;flex-direction:column;gap:2px;margin:0 auto;width:fit-content;background:#0f1923;border-radius:10px;padding:12px 14px;box-shadow:0 4px 20px rgba(0,0,0,.4);border:1px solid #1a2a3a}
-.seat-row{display:grid;grid-template-columns:50px repeat(36, 30px);align-items:center;gap:1px;min-width:fit-content}
-.row-label{grid-column:1;grid-row:1;text-align:right;padding-right:8px;font-size:11px;font-weight:600;color:var(--sub)}
+.seat-row{display:grid;grid-template-columns:40px repeat(36, 24px);align-items:center;gap:1px;min-width:fit-content}
+.row-label{grid-column:1;grid-row:1;text-align:right;padding-right:6px;font-size:10px;font-weight:600;color:var(--sub)}
 
-.seat{width:30px;height:30px;border-radius:5px;border:1px solid;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;user-select:none;flex-shrink:0;min-width:30px;position:relative;-webkit-tap-highlight-color:transparent}
+.seat{width:24px;height:24px;border-radius:4px;border:1px solid;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;user-select:none;flex-shrink:0;min-width:24px;position:relative;-webkit-tap-highlight-color:transparent}
 .seat:active{transform:scale(.9)}
 
 .seat.free{background:var(--free-bg);border-color:var(--free-bd);color:var(--free-tx)}
@@ -143,11 +143,10 @@ body{
   .main-content{flex-direction:column}
   .sidebar{width:100%;position:static;max-height:none}
   .stage{padding:6px 40px;font-size:11px}
-  .seat{width:26px;height:26px;min-width:26px;font-size:8px}
-  .row-label{width:44px;font-size:10px}
-  .seat.pending::after{font-size:13px}
-  .seat.mine::after{font-size:12px}
-  .seat.taken::after{font-size:8px}
+  .seat{width:22px;height:22px;min-width:22px;font-size:7px}
+  .row-label{width:35px;font-size:9px}
+  .seat.taken::after{font-size:7px}
+  .seat.mine::after{font-size:10px}
 }
 </style>
 </head>
@@ -267,7 +266,7 @@ function renderGrid() {
     if (rd.type === 'aisle') {
       const d = document.createElement('div');
       d.className = 'seat-row h-aisle';
-      d.style.gridTemplateColumns = '50px repeat(' + cols + ', 30px)';
+      d.style.gridTemplateColumns = '40px repeat(' + cols + ', 24px)';
       d.innerHTML = '<span style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;height:48px;background:#1a3020;border-top:2px solid #4a7a4a;border-bottom:2px solid #4a7a4a;color:#7ab87a;font-size:14px;letter-spacing:10px;font-weight:700;margin:8px 0">⬇  过  道  ⬇</span>';
       grid.appendChild(d);
       return;
@@ -275,7 +274,7 @@ function renderGrid() {
 
     const rowDiv = document.createElement('div');
     rowDiv.className = 'seat-row';
-    rowDiv.style.gridTemplateColumns = '50px repeat(' + cols + ', 30px)';
+    rowDiv.style.gridTemplateColumns = '40px repeat(' + cols + ', 24px)';
 
     const lbl = document.createElement('div');
     lbl.className = 'row-label';
@@ -292,8 +291,8 @@ function renderGrid() {
       el.style.gridColumn = gridCol;
 
       if (!s) {
-        el.style.width = '30px';
-        el.style.height = '30px';
+        el.style.width = '24px';
+        el.style.height = '24px';
         rowDiv.appendChild(el);
         continue;
       }
