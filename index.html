@@ -24,7 +24,7 @@ body{
 .container{max-width:1400px;width:100%;display:flex;flex-direction:column;gap:10px}
 
 /* Header */
-.header{text-align:center;padding:8px 0 0}
+.header{text-align:center;padding:8px 0 0;width:100%}
 .header h1{font-size:20px;font-weight:700;color:var(--accent);letter-spacing:2px}
 .header .sub{color:var(--sub);margin-top:2px;font-size:11px}
 
@@ -53,9 +53,9 @@ body{
 .seat-row{display:flex;align-items:center;gap:1px}
 .row-label{width:50px;text-align:right;padding-right:8px;font-size:11px;font-weight:600;color:var(--sub);flex-shrink:0}
 .h-aisle{height:18px;display:flex;align-items:center;justify-content:center;width:100%;margin:2px 0}
-.h-aisle span{color:#5a8a5a;font-size:10px;letter-spacing:3px;padding:0 16px;position:relative}
-.h-aisle span::before,.h-aisle span::after{content:'';position:absolute;top:50%;width:160px;height:1px;background:#3a5a3a}
-.h-aisle span::before{right:100%}.h-aisle span::after{left:100%}
+.h-aisle{position:relative}
+.h-aisle::before{content:'';position:absolute;left:54px;right:0;top:50%;height:1px;background:#3a5a3a}
+.h-aisle span{color:#5a8a5a;font-size:10px;letter-spacing:3px;padding:0 16px;background:#0f1923;position:relative;z-index:1}
 
 .seat{width:30px;height:30px;border-radius:5px;border:1px solid;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;user-select:none;flex-shrink:0;min-width:30px;position:relative;-webkit-tap-highlight-color:transparent}
 .seat:active{transform:scale(.9)}
@@ -78,7 +78,7 @@ body{
 .seat.bad::after{content:'✕';font-size:10px;color:#c44}
 .seat.lighting{background:#3a2a1a;border-color:#8b6914;color:#8b6914;cursor:default;font-size:0}
 .seat.lighting::after{content:'💡';font-size:11px}
-.seat.aisle{background:transparent;border:none;cursor:default;pointer-events:none}
+.seat.aisle{background:#2a3a2a;border:1px dashed #3a5a3a;cursor:default;pointer-events:none}
 
 /* Confirm Panel - fixed bottom */
 .confirm-panel{
