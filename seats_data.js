@@ -2423,6 +2423,9 @@ const SEAT_DATA = [
         "type": "lighting"
       },
       {
+        "type": "lighting"
+      },
+      {
         "type": "seat",
         "number": 9
       },
