@@ -131,6 +131,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -193,6 +196,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -245,6 +251,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -307,6 +316,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -367,6 +379,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -429,6 +444,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -497,6 +515,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -559,6 +580,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -635,6 +659,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -697,6 +724,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -777,6 +807,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -839,6 +872,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -919,6 +955,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -981,6 +1020,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -1061,6 +1103,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -1123,6 +1168,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -1203,6 +1251,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -1265,6 +1316,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -1345,6 +1399,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -1407,6 +1464,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -1479,6 +1539,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -1541,6 +1604,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -1761,6 +1827,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -1823,6 +1892,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -1903,6 +1975,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -1965,6 +2040,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -2041,6 +2119,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -2103,6 +2184,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
@@ -2171,6 +2255,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -2235,6 +2322,9 @@ const SEAT_DATA = [
         "number": 15
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 17
       },
@@ -2293,6 +2383,9 @@ const SEAT_DATA = [
         "number": 18
       },
       {
+        "type": "aisle"
+      },
+      {
         "type": "seat",
         "number": 16
       },
@@ -2326,6 +2419,9 @@ const SEAT_DATA = [
       {
         "type": "seat",
         "number": 15
+      },
+      {
+        "type": "aisle"
       },
       {
         "type": "seat",
