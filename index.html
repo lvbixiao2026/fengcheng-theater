@@ -2,6 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=0.5, minimum-scale=0.2, maximum-scale=3.0, user-scalable=yes">
 <title>凤城剧院座次表</title>
 <style>
@@ -59,7 +62,7 @@ h1{font-size:22px;color:var(--accent);text-align:center}
 <body>
 <div class="container">
 <h1>🎭 凤城剧院座次表</h1>
-<p class="sub">点击座位 · 输入微信名 · 即刻确认</p>
+<p class="sub">点击勾选多个座位 · 输入微信名 · 一次性确认（最多5座）</p>
 <div class="stage">⬆ 舞 台 ⬆</div>
 <div class="bar">已选：<span class="val" id="cnt">0</span> / 557 座</div>
 <div class="my-info" id="myInfo" style="display:none;text-align:center;color:var(--accent);font-size:14px;font-weight:700;background:#1a3a5c;padding:6px 16px;border-radius:6px;border:1px solid #2a5a8a"></div>
@@ -74,6 +77,7 @@ h1{font-size:22px;color:var(--accent);text-align:center}
 <button class="btn-ok" id="btnOk" onclick="confirmSeat()">确认选座</button>
 <button class="btn-cancel" onclick="cancelPick()">取消</button>
 </div>
+<div style="display:none;text-align:center;font-size:11px;color:#888;margin-top:4px" id="pickHint">点取消可继续添加座位</div>
 <div class="toast" id="toast"></div>
 
 <script src="seats_data.js"></script>
@@ -207,6 +211,7 @@ function updatePanel(){
   var labels=[];
   myPicks.forEach(function(sid){labels.push(sid.replace('-','')+'号')});
   document.getElementById('pnlSeat').textContent='已选 '+cnt+'/5 座：'+labels.join(', ');
+  document.getElementById('pickHint').style.display=cnt<5?'block':'none';
   document.getElementById('pnlName').focus();
 }
 
@@ -238,7 +243,7 @@ function confirmSeat(){
 }
 
 function cancelPick(){myPicks=[];render();hidePanel()}
-function hidePanel(){document.getElementById('panel').style.display='none';document.getElementById('pnlName').value=''}
+function hidePanel(){document.getElementById('panel').style.display='none';document.getElementById('pnlName').value='';var h=document.getElementById('pickHint');if(h)h.style.display='none'}
 function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast'+(e?' err':'');t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},2200)}
 document.getElementById('pnlName').addEventListener('keydown',function(e){if(e.key==='Enter')confirmSeat()});
 </script>
