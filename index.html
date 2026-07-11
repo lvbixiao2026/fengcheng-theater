@@ -169,18 +169,8 @@ body{
     <span><i class="ll"></i>灯光区</span>
   </div>
 
-  <div class="main-content">
-    <div class="grid-section">
-      <div class="seat-grid-wrapper">
-        <div class="seat-grid" id="seatGrid"></div>
-      </div>
-    </div>
-
-    <div class="sidebar">
-      <h3>📋 全部已选</h3>
-      <div class="all-seats-list" id="allSeatsList"><div class="empty-hint">暂无选座</div></div>
-      <div class="summary"><span>已确认</span><span id="confirmedCount">0 座</span></div>
-    </div>
+  <div class="seat-grid-wrapper">
+    <div class="seat-grid" id="seatGrid"></div>
   </div>
 </div>
 
@@ -251,7 +241,6 @@ function sid(row, num) { return row + '-' + num; }
 
 function updateUI() {
   renderGrid();
-  updateSidebar();
   document.getElementById('takenCount').textContent =
     Object.keys(seatState).length;
 }
@@ -412,34 +401,6 @@ function cancelAll() {
   updateConfirmPanel();
   updateUI();
   showToast('已取消选择');
-}
-
-// ========== Sidebar ==========
-function updateSidebar() {
-  const entries = Object.entries(seatState);
-  const allList = document.getElementById('allSeatsList');
-
-  if (entries.length === 0) {
-    allList.innerHTML = '<div class="empty-hint">暂无选座</div>';
-    return;
-  }
-
-  const rowOrder = {};
-  SEAT_DATA.forEach((rd,i) => { if(rd.type==='row') rowOrder[rd.label]=i; });
-  entries.sort(([a],[b]) => {
-    const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
-    const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];
-    return ((rowOrder[ra]??999)-(rowOrder[rb]??999)) || (sa-sb);
-  });
-
-  allList.innerHTML = entries.map(([seatId, info]) => {
-    const [r,n] = [seatId.split('-')[0], seatId.split('-').slice(1).join('-')];
-    const name = info.name || '?';
-    return '<div class="all-seat-row">' +
-      '<span class="sid">✓ ' + r + n + '号</span>' +
-      '<span class="sowner">' + name + '</span>' +
-    '</div>';
-  }).join('');
 }
 
 // ========== Export ==========
