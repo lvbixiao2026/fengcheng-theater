@@ -2036,6 +2036,7 @@ const SEAT_DATA = [
       }
     ]
   },
+  {"type": "aisle"},
   {
     "type": "row",
     "label": "第十三排",
