@@ -78,9 +78,7 @@ body{
 .seat.aisle::after{content:'过道';font-size:8px;color:#5a8a5a}
 
 /* Horizontal aisle */
-.h-aisle{width:100%;display:flex;align-items:center;justify-content:center;height:48px;margin:8px 0;background:#1a3020;border-top:2px solid #4a7a4a;border-bottom:2px solid #4a7a4a;position:relative}
-.h-aisle::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#4a7a4a}
-.h-aisle span{color:#7ab87a;font-size:14px;letter-spacing:10px;font-weight:700;padding:4px 40px;background:#111d18;border-radius:4px;border:1px solid #3a5a3a;z-index:1}
+.h-aisle{display:grid !important;align-items:center}
 
 /* Confirm Panel - fixed bottom */
 .confirm-panel{
@@ -275,9 +273,9 @@ function renderGrid() {
   SEAT_DATA.forEach(rd => {
     if (rd.type === 'aisle') {
       const d = document.createElement('div');
-      d.className = 'h-aisle';
-      d.style.paddingLeft = '50px';
-      d.innerHTML = '<span>⬇  过  道  ⬇</span>';
+      d.className = 'seat-row h-aisle';
+      d.style.gridTemplateColumns = '50px repeat(' + cols + ', 30px)';
+      d.innerHTML = '<span style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;height:48px;background:#1a3020;border-top:2px solid #4a7a4a;border-bottom:2px solid #4a7a4a;color:#7ab87a;font-size:14px;letter-spacing:10px;font-weight:700;margin:8px 0">⬇  过  道  ⬇</span>';
       grid.appendChild(d);
       return;
     }
