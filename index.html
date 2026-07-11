@@ -2,9 +2,9 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=0.35, minimum-scale=0.2, maximum-scale=2.0, user-scalable=yes">
 <title>凤城剧院座次表</title>
-<script src="https://unpkg.com/mqtt@5.10.3/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js"></script>
 <style>
 :root{
   --bg:#1a1a2e;--text:#e0e0e0;--sub:#888;
@@ -204,8 +204,16 @@ let client = null;
 let seatState = {}; // seatId -> {name?, pending?, sid?, ts?}
 const mySid = 'sess-' + Math.random().toString(36).slice(2,10);
 let myPending = new Set();
+let mqttAvailable = false;
 
 function connectMQTT() {
+  if (typeof mqtt === 'undefined') {
+    console.warn('[MQTT] library not loaded - running without sync');
+    client = { publish: function(){}, subscribe: function(){}, on: function(){}, end: function(){} };
+    updateUI();
+    return;
+  }
+  mqttAvailable = true;
   client = mqtt.connect(BROKER, {
     clientId: 'fc-' + Math.random().toString(36).slice(2,8),
     clean: true,
@@ -228,7 +236,6 @@ function connectMQTT() {
     } else {
       try {
         const data = JSON.parse(payload);
-        // Clean expired pending
         if (data.pending && data.ts && Date.now() - data.ts > PENDING_TTL) {
           client.publish(TOPIC + seatId, '', {qos:1, retain:true});
           return;
@@ -348,7 +355,7 @@ function renderGrid() {
 }
 
 function handleClick(seatId, row, num) {
-  if (!client || !client.connected) { showToast('连接中，请稍候', true); return; }
+  if (mqttAvailable && (!client || !client.connected)) { showToast('连接中，请稍候', true); return; }
 
   const st = seatState[seatId];
 
@@ -367,22 +374,26 @@ function handleClick(seatId, row, num) {
   // My pending seat → toggle off
   if (st && st.pending && st.sid === mySid) {
     client.publish(TOPIC + seatId, '', {qos:1, retain:true});
+    if (!mqttAvailable) delete seatState[seatId];
     myPending.delete(seatId);
     updateConfirmPanel();
+    if (!mqttAvailable) updateUI();
     return;
   }
 
   // Clear any previous pending seats (one seat per person)
   if (myPending.size > 0) {
-    myPending.forEach(sid => client.publish(TOPIC + sid, '', {qos:1, retain:true}));
+    myPending.forEach(sid => { client.publish(TOPIC + sid, '', {qos:1, retain:true}); if (!mqttAvailable) delete seatState[sid]; });
     myPending.clear();
   }
 
   // Free → reserve
   const payload = JSON.stringify({pending:true, sid:mySid, ts:Date.now()});
   client.publish(TOPIC + seatId, payload, {qos:1, retain:true});
+  if (!mqttAvailable) seatState[seatId] = {pending:true, sid:mySid, ts:Date.now()};
   myPending.add(seatId);
   updateConfirmPanel();
+  if (!mqttAvailable) updateUI();
 }
 
 function updateConfirmPanel() {
@@ -416,12 +427,14 @@ function doConfirm() {
   myPending.forEach(seatId => {
     const payload = JSON.stringify({name: name, ts: Date.now()});
     client.publish(TOPIC + seatId, payload, {qos:1, retain:true});
+    if (!mqttAvailable) seatState[seatId] = {name: name, ts: Date.now()};
   });
 
   showToast('已确认 ' + myPending.size + ' 座 → ' + name);
   myPending.clear();
   document.getElementById('nameInput').value = '';
   updateConfirmPanel();
+  if (!mqttAvailable) updateUI();
 }
 
 function cancelAll() {
