@@ -75,7 +75,8 @@ h1{font-size:22px;color:var(--accent);text-align:center}
 <span id="pnlSeat"></span>
 <input id="pnlName" placeholder="输入你的微信名或姓名" maxlength="20" autocomplete="off">
 <button class="btn-ok" id="btnOk" onclick="confirmSeat()">确认选座</button>
-<button class="btn-cancel" onclick="cancelPick()">取消</button>
+<button class="btn-cancel" id="btnCancelSeat" style="display:none" onclick="cancelMySeat()">取消选座</button>
+<button class="btn-cancel" id="btnCancel" onclick="cancelPick()">取消</button>
 </div>
 <div style="display:none;text-align:center;font-size:11px;color:#888;margin-top:4px" id="pickHint">点取消可继续添加座位</div>
 <div class="toast" id="toast"></div>
@@ -93,7 +94,7 @@ h1{font-size:22px;color:var(--accent);text-align:center}
   document.head.appendChild(s);
 })();
 
-var seatState={}, myPicks=[], client;
+var seatState={}, myPicks=[], cancelTarget=null, client;
 
 // Remember user's own seats across sessions
 var myName=localStorage.getItem('fc_myName')||'';
@@ -187,20 +188,34 @@ function render(){
 
 function onSeat(id,row,num){
   var st=seatState[id];
-  // If user clicks on their own confirmed seat, show info
+  // If user clicks on their own confirmed seat, show cancel option
   if(st && myName && st.name===myName){
-    toast('你的座位：'+row+num+'号',0);return
+    hidePanel();
+    cancelTarget=id;
+    var p=document.getElementById('panel');
+    p.style.display='flex';
+    document.getElementById('pnlSeat').textContent='取消选座：'+row+num+'号 ('+myName+')';
+    document.getElementById('pnlName').style.display='none';
+    document.getElementById('btnOk').style.display='none';
+    document.getElementById('btnCancelSeat').style.display='inline-block';
+    document.getElementById('btnCancel').style.display='inline-block';
+    return
   }
   if(st){toast(row+num+'号 已被'+(st.name||'他人')+'选',1);return}
   // Toggle: if already picked, remove; else add (max 5)
   var idx=myPicks.indexOf(id);
-  if(idx>=0){myPicks.splice(idx,1);render();updatePanel();return}
+  if(idx>=0){myPicks.splice(idx,1);render();updatePickPanel();return}
   if(myPicks.length>=5){toast('最多一次选5座',1);return}
   myPicks.push(id);render();
-  updatePanel();
+  updatePickPanel();
 }
 
-function updatePanel(){
+function updatePickPanel(){
+  cancelTarget=null;
+  document.getElementById('pnlName').style.display='';
+  document.getElementById('btnOk').style.display='';
+  document.getElementById('btnCancelSeat').style.display='none';
+  document.getElementById('btnCancel').style.display='';
   var p=document.getElementById('panel');
   var cnt=myPicks.length;
   if(cnt===0){hidePanel();return}
@@ -243,6 +258,20 @@ function confirmSeat(){
 }
 
 function cancelPick(){myPicks=[];render();hidePanel()}
+
+function cancelMySeat(){
+  if(!cancelTarget)return;
+  var sid=cancelTarget;
+  cancelTarget=null;hidePanel();
+  // Publish null to remove from MQTT
+  client.publish('fengcheng-theater-557/seat/'+sid,null,{qos:1,retain:true});
+  delete seatState[sid];
+  // Remove from localStorage
+  var idx=mySeatIds.indexOf(sid);
+  if(idx>=0){mySeatIds.splice(idx,1);localStorage.setItem('fc_mySeats',JSON.stringify(mySeatIds))}
+  toast('已取消 '+sid.replace('-','')+'号');
+  render();
+}
 function hidePanel(){document.getElementById('panel').style.display='none';document.getElementById('pnlName').value='';var h=document.getElementById('pickHint');if(h)h.style.display='none'}
 function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast'+(e?' err':'');t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},2200)}
 document.getElementById('pnlName').addEventListener('keydown',function(e){if(e.key==='Enter')confirmSeat()});
