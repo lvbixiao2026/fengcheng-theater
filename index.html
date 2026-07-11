@@ -72,8 +72,8 @@ body{
 .seat.mine:hover{background:#2a4a6c}
 .seat.mine::after{content:'✓';font-size:14px;position:absolute;color:#64b5f6}
 
-.seat.taken{background:var(--taken-bg);border-color:var(--taken-bd);color:var(--taken-tx);cursor:not-allowed;font-size:0}
-.seat.taken::after{content:'✕';font-size:13px;color:#a06020}
+.seat.taken{background:var(--taken-bg);border-color:var(--taken-bd);color:var(--taken-tx);cursor:not-allowed;font-size:9px}
+.seat.taken::after{content:'已选';font-size:9px;color:#a06020}
 
 .seat.bad{background:var(--bad-bg);border-color:var(--bad-bd);color:#666;cursor:not-allowed}
 .seat.bad::after{content:'✕';font-size:10px;color:#c44}
@@ -147,7 +147,7 @@ body{
   .row-label{width:44px;font-size:10px}
   .seat.pending::after{font-size:13px}
   .seat.mine::after{font-size:12px}
-  .seat.taken::after{font-size:11px}
+  .seat.taken::after{font-size:8px}
 }
 </style>
 </head>
