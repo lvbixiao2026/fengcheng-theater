@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>座次表 · 管理导出</title>
-<script src="https://unpkg.com/mqtt@5.10.3/dist/mqtt.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js"></script>
 <style>
 :root{--bg:#1a1a2e;--text:#e0e0e0;--sub:#888;--accent:#e8b86d}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -79,8 +79,7 @@ body{
       <p class="sub">管理导出 · 实时数据</p>
     </div>
     <div class="stats">
-      <div class="stat-card"><div class="num" id="confirmedCount">0</div><div class="label">已确认</div></div>
-      <div class="stat-card"><div class="num" id="pendingCount">0</div><div class="label">待确认</div></div>
+      <div class="stat-card"><div class="num" id="confirmedCount">0</div><div class="label">已选</div></div>
       <div class="stat-card"><div class="num" id="totalCount">557</div><div class="label">总座位</div></div>
     </div>
     <div id="connectingMsg" class="connecting">🔗 正在连接实时数据...</div>
@@ -158,9 +157,7 @@ let rowOrder = {};
 
 function updateUI() {
   document.getElementById('confirmedCount').textContent =
-    Object.values(seatState).filter(s => !s.pending).length;
-  document.getElementById('pendingCount').textContent =
-    Object.values(seatState).filter(s => s.pending).length;
+    Object.keys(seatState).length;
 
   const entries = Object.entries(seatState);
   const listEl = document.getElementById('seatList');
@@ -184,13 +181,11 @@ function updateUI() {
 
   listEl.innerHTML = sorted.map(([seatId, info]) => {
     const [r,n] = [seatId.split('-')[0], seatId.split('-').slice(1).join('-')];
-    const tag = info.pending ? '⏳' : '✓';
-    const name = info.pending ? '待确认' : (info.name || '未知');
-    const pendingClass = info.pending ? 'color:#e8b86d' : '';
-    return `<div class="seat-row">
-      <span class="sid">${tag} ${r}${n}号</span>
-      <span class="name" style="${pendingClass}">${name}</span>
-    </div>`;
+    const name = info.name || '未知';
+    return '<div class="seat-row">' +
+      '<span class="sid">✓ ' + r + n + '号</span>' +
+      '<span class="name">' + name + '</span>' +
+    '</div>';
   }).join('');
 }
 
@@ -211,7 +206,7 @@ function loadRowOrder() {
 
 // ========== Export ==========
 function getSortedConfirmed() {
-  const confirmed = Object.entries(seatState).filter(([,v]) => !v.pending);
+  const confirmed = Object.entries(seatState);
   confirmed.sort(([a],[b]) => {
     const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
     const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];

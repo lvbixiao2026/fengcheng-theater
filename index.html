@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=0.35, minimum-scale=0.2, maximum-scale=2.0, user-scalable=yes">
 <title>凤城剧院座次表</title>
+<meta property="og:title" content="凤城剧院座次表">
+<meta property="og:description" content="点击选座，输入微信名确认，实时同步">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="凤城剧院">
+<meta name="description" content="凤城剧院在线选座系统">
 <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js"></script>
 <style>
 :root{
@@ -151,17 +156,15 @@ body{
 <div class="container">
   <div class="header">
     <h1>🎭 凤城剧院座次表</h1>
-    <p class="sub">点击选座 · 选完后输入姓名确认 · 实时同步</p>
+    <p class="sub">点击座位 · 输入微信名 · 即刻确认</p>
   </div>
   <div class="stage-area"><div class="stage">⬆ 舞 台 ⬆</div></div>
   <div class="bar">
     <div><span class="dot"></span>已选：<span class="val" id="takenCount">0</span> / 557 座</div>
-    <div>待确认：<span class="val" id="pendingCount">0</span> 座</div>
   </div>
   <div class="legend">
     <span><i class="lf"></i>可选</span>
     <span><i class="lm"></i>我的</span>
-    <span><i class="lp"></i>待确认</span>
     <span><i class="lt"></i>已选</span>
     <span><i class="lb"></i>坏座</span>
     <span><i class="ll"></i>灯光区</span>
@@ -197,12 +200,11 @@ body{
 // ========== MQTT ==========
 const BROKER = 'wss://broker.hivemq.com:8884/mqtt';
 const TOPIC = 'fengcheng-theater-557/seat/';
-const PENDING_TTL = 5 * 60 * 1000; // 5 min
 
 let client = null;
-let seatState = {}; // seatId -> {name?, pending?, sid?, ts?}
+let seatState = {}; // seatId -> {name, ts}
 const mySid = 'sess-' + Math.random().toString(36).slice(2,10);
-let myPending = new Set();
+let mySelected = null; // currently selected seat (local only, not yet confirmed)
 let mqttAvailable = false;
 
 function connectMQTT() {
@@ -234,12 +236,7 @@ function connectMQTT() {
       delete seatState[seatId];
     } else {
       try {
-        const data = JSON.parse(payload);
-        if (data.pending && data.ts && Date.now() - data.ts > PENDING_TTL) {
-          client.publish(TOPIC + seatId, '', {qos:1, retain:true});
-          return;
-        }
-        seatState[seatId] = data;
+        seatState[seatId] = JSON.parse(payload);
       } catch(e) {}
     }
     updateUI();
@@ -257,11 +254,7 @@ function updateUI() {
   renderGrid();
   updateSidebar();
   document.getElementById('takenCount').textContent =
-    Object.values(seatState).filter(s => !s.pending).length;
-  document.getElementById('pendingCount').textContent =
-    Object.values(seatState).filter(s => s.pending).length;
-  document.getElementById('confirmedCount').textContent =
-    Object.values(seatState).filter(s => !s.pending).length;
+    Object.keys(seatState).length;
 }
 
 function renderGrid() {
@@ -328,18 +321,14 @@ function renderGrid() {
       let cls = 'free', title = rd.label + s.number + '号';
 
       if (st) {
-        if (st.pending) {
-          if (st.sid === mySid) {
-            cls = 'mine';
-            title += ' — 待确认（我的）';
-          } else {
-            cls = 'pending';
-            title += ' — 他人选中，待确认';
-          }
-        } else {
-          cls = 'taken';
-          title += ' — ' + (st.name || '已选');
-        }
+        cls = 'taken';
+        title += ' — ' + (st.name || '已选');
+      }
+
+      // Highlight locally selected (not yet confirmed)
+      if (mySelected === id) {
+        cls = 'mine';
+        title += ' — 点击后待输入姓名';
       }
 
       el.className = 'seat ' + cls;
@@ -358,52 +347,35 @@ function handleClick(seatId, row, num) {
 
   const st = seatState[seatId];
 
-  // Already confirmed by someone
-  if (st && !st.pending) {
+  // Already confirmed
+  if (st) {
     showToast(row + num + '号 已被' + (st.name || '他人') + '选择', true);
     return;
   }
 
-  // Pending by someone else
-  if (st && st.pending && st.sid !== mySid) {
-    showToast(row + num + '号 已有他人选中，等待确认', true);
-    return;
-  }
-
-  // My pending seat → toggle off
-  if (st && st.pending && st.sid === mySid) {
-    client.publish(TOPIC + seatId, '', {qos:1, retain:true});
-    if (!mqttAvailable) delete seatState[seatId];
-    myPending.delete(seatId);
+  // Toggle off if same seat clicked again
+  if (mySelected === seatId) {
+    mySelected = null;
+    updateUI();
     updateConfirmPanel();
-    if (!mqttAvailable) updateUI();
     return;
   }
 
-  // Clear any previous pending seats (one seat per person)
-  if (myPending.size > 0) {
-    myPending.forEach(sid => { client.publish(TOPIC + sid, '', {qos:1, retain:true}); if (!mqttAvailable) delete seatState[sid]; });
-    myPending.clear();
-  }
-
-  // Free → reserve
-  const payload = JSON.stringify({pending:true, sid:mySid, ts:Date.now()});
-  client.publish(TOPIC + seatId, payload, {qos:1, retain:true});
-  if (!mqttAvailable) seatState[seatId] = {pending:true, sid:mySid, ts:Date.now()};
-  myPending.add(seatId);
+  // Select this seat (local only, no MQTT yet)
+  mySelected = seatId;
+  updateUI();
   updateConfirmPanel();
-  if (!mqttAvailable) updateUI();
 }
 
 function updateConfirmPanel() {
   const panel = document.getElementById('confirmPanel');
-  if (myPending.size === 0) {
+  if (!mySelected) {
     panel.style.display = 'none';
     document.getElementById('nameInput').value = '';
     return;
   }
   panel.style.display = 'flex';
-  document.getElementById('panelCount').textContent = '已选 ' + myPending.size + ' 座';
+  document.getElementById('panelCount').textContent = '已选 1 座';
   document.getElementById('confirmBtn').disabled = false;
   document.getElementById('nameInput').focus();
 }
@@ -411,11 +383,11 @@ function updateConfirmPanel() {
 // ========== Confirm ==========
 function doConfirm() {
   const name = document.getElementById('nameInput').value.trim();
-  if (!name) { showToast('请输入姓名', true); return; }
-  if (myPending.size === 0) return;
+  if (!name) { showToast('请输入微信名', true); return; }
+  if (!mySelected) return;
 
   // Check if name already has a confirmed seat
-  const existing = Object.entries(seatState).find(([,info]) => !info.pending && info.name === name);
+  const existing = Object.entries(seatState).find(([,info]) => info.name === name);
   if (existing) {
     showToast('「' + name + '」已选了 ' + existing[0].replace('-','') + '号，每人限选一个', true);
     return;
@@ -423,27 +395,23 @@ function doConfirm() {
 
   document.getElementById('confirmBtn').disabled = true;
 
-  myPending.forEach(seatId => {
-    const payload = JSON.stringify({name: name, ts: Date.now()});
-    client.publish(TOPIC + seatId, payload, {qos:1, retain:true});
-    if (!mqttAvailable) seatState[seatId] = {name: name, ts: Date.now()};
-  });
+  const payload = JSON.stringify({name: name, ts: Date.now()});
+  client.publish(TOPIC + mySelected, payload, {qos:1, retain:true});
+  if (!mqttAvailable) seatState[mySelected] = {name: name, ts: Date.now()};
 
-  showToast('已确认 ' + myPending.size + ' 座 → ' + name);
-  myPending.clear();
+  showToast('已选座 → ' + name);
+  mySelected = null;
   document.getElementById('nameInput').value = '';
   updateConfirmPanel();
   if (!mqttAvailable) updateUI();
 }
 
 function cancelAll() {
-  if (myPending.size === 0) return;
-  myPending.forEach(seatId => {
-    client.publish(TOPIC + seatId, '', {qos:1, retain:true});
-  });
-  myPending.clear();
+  if (!mySelected) return;
+  mySelected = null;
   document.getElementById('nameInput').value = '';
   updateConfirmPanel();
+  updateUI();
   showToast('已取消选择');
 }
 
@@ -467,20 +435,18 @@ function updateSidebar() {
 
   allList.innerHTML = entries.map(([seatId, info]) => {
     const [r,n] = [seatId.split('-')[0], seatId.split('-').slice(1).join('-')];
-    const tag = info.pending ? '⏳' : '✓';
-    const name = info.pending ? '待确认' : info.name;
-    const me = info.pending && info.sid === mySid;
-    return `<div class="all-seat-row" style="${me?'background:#1a3050':''}">
-      <span class="sid">${tag} ${r}${n}号</span>
-      <span class="sowner">${name}${me?' (我)':''}</span>
-    </div>`;
+    const name = info.name || '?';
+    return '<div class="all-seat-row">' +
+      '<span class="sid">✓ ' + r + n + '号</span>' +
+      '<span class="sowner">' + name + '</span>' +
+    '</div>';
   }).join('');
 }
 
 // ========== Export ==========
 function exportCSV() {
-  const confirmed = Object.entries(seatState).filter(([,v]) => !v.pending);
-  if (!confirmed.length) { showToast('无已确认选座', true); return; }
+  const confirmed = Object.entries(seatState);
+  if (!confirmed.length) { showToast('无已选座位', true); return; }
 
   const rowOrder = {};
   SEAT_DATA.forEach((rd,i) => { if(rd.type==='row') rowOrder[rd.label]=i; });
@@ -506,8 +472,8 @@ function exportCSV() {
 }
 
 function copyList() {
-  const confirmed = Object.entries(seatState).filter(([,v]) => !v.pending);
-  if (!confirmed.length) { showToast('无已确认选座', true); return; }
+  const confirmed = Object.entries(seatState);
+  if (!confirmed.length) { showToast('无已选座位', true); return; }
 
   const rowOrder = {};
   SEAT_DATA.forEach((rd,i) => { if(rd.type==='row') rowOrder[rd.label]=i; });
@@ -534,17 +500,6 @@ function showToast(msg, isErr) {
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 2200);
 }
-
-// ========== Periodic cleanup of expired pending ==========
-setInterval(() => {
-  let cleaned = false;
-  Object.entries(seatState).forEach(([seatId, info]) => {
-    if (info.pending && info.ts && Date.now() - info.ts > PENDING_TTL) {
-      client.publish(TOPIC + seatId, '', {qos:1, retain:true});
-      cleaned = true;
-    }
-  });
-}, 30000);
 
 // Enter key in name input
 document.getElementById('nameInput').addEventListener('keydown', e => {
