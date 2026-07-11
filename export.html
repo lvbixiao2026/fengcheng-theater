@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>座次表 · 管理导出</title>
-<script src="mqtt.min.js"></script>
+<script>var mqtt;(function loadMQTT(){var s=document.createElement('script');s.src='mqtt.min.js';s.onerror=function(){s.src='https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js'};s.onload=function(){if(typeof mqtt!=='undefined'&&window._onMQTTReady)window._onMQTTReady()};document.head.appendChild(s)})()</script>
 <style>
 :root{--bg:#1a1a2e;--text:#e0e0e0;--sub:#888;--accent:#e8b86d}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -121,34 +121,35 @@ const TOPIC = 'fengcheng-theater-557/seat/';
 let client = null;
 
 function connectMQTT() {
-  client = mqtt.connect(BROKER, {
-    clientId: 'fc-admin-' + Math.random().toString(36).slice(2,8),
-    clean: true,
-    connectTimeout: 10000,
-    reconnectPeriod: 3000
-  });
+  function doConnect(){
+    client = mqtt.connect(BROKER, {
+      clientId: 'fc-admin-' + Math.random().toString(36).slice(2,8),
+      clean: true,
+      connectTimeout: 10000,
+      reconnectPeriod: 3000
+    });
 
-  client.on('connect', () => {
-    console.log('[Admin MQTT] OK');
-    document.getElementById('connectingMsg').style.display = 'none';
-    document.getElementById('seatList').style.display = 'block';
-    client.subscribe(TOPIC + '#', {qos:1});
-  });
+    client.on('connect', () => {
+      console.log('[Admin MQTT] OK');
+      document.getElementById('connectingMsg').style.display = 'none';
+      document.getElementById('seatList').style.display = 'block';
+      client.subscribe(TOPIC + '#', {qos:1});
+    });
 
-  client.on('message', (topic, msg) => {
-    const seatId = topic.toString().replace(TOPIC, '');
-    const payload = msg.toString();
-    if (!payload || payload === 'null') {
-      delete seatState[seatId];
-    } else {
-      try {
-        seatState[seatId] = JSON.parse(payload);
-      } catch(e) {}
-    }
-    updateUI();
-  });
+    client.on('message', (topic, msg) => {
+      const seatId = topic.toString().replace(TOPIC, '');
+      const payload = msg.toString();
+      if (!payload || payload === 'null') {
+        delete seatState[seatId];
+      } else {
+        try { seatState[seatId] = JSON.parse(payload); } catch(e) {}
+      }
+      updateUI();
+    });
 
-  client.on('error', e => console.error('MQTT err', e));
+    client.on('error', e => console.error('MQTT err', e));
+  }
+  if(typeof mqtt!=='undefined'){doConnect()}else{window._onMQTTReady=doConnect}
 }
 
 // ========== UI ==========
