@@ -52,6 +52,8 @@ h1{font-size:22px;color:var(--accent);text-align:center}
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1}.toast.err{background:#5c2a2a}
 
+.wechat-guide{background:#3a2010;border:1px solid #d4a030;color:#e8b86d;padding:8px 14px;border-radius:6px;font-size:12px;text-align:center;max-width:500px;width:100%}
+
 @media(max-width:768px){
   .seat{width:20px;height:20px;font-size:6px}
   .row-label{font-size:8px}
@@ -63,6 +65,10 @@ h1{font-size:22px;color:var(--accent);text-align:center}
 <div class="container">
 <h1>🎭 凤城剧院座次表</h1>
 <p class="sub">点击勾选多个座位 · 输入微信名 · 一次性确认（最多5座）</p>
+<div class="wechat-guide" id="wcGuide">
+  ⚠️ 微信内无法直接打开？请点右上角 <b>···</b> → <b>在浏览器中打开</b>
+  <button onclick="this.parentNode.style.display='none'" style="margin-left:8px;background:none;border:1px solid #888;color:#888;padding:2px 8px;border-radius:4px;font-size:11px;cursor:pointer">✕</button>
+</div>
 <div class="stage">⬆ 舞 台 ⬆</div>
 <div class="bar">已选：<span class="val" id="cnt">0</span> / 557 座</div>
 <div class="my-info" id="myInfo" style="display:none;text-align:center;color:var(--accent);font-size:14px;font-weight:700;background:#1a3a5c;padding:6px 16px;border-radius:6px;border:1px solid #2a5a8a"></div>
