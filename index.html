@@ -49,13 +49,9 @@ body{
 
 /* Grid */
 .seat-grid-wrapper{overflow-x:auto;padding:6px 0 10px;width:100%;-webkit-overflow-scrolling:touch}
-.seat-grid{display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 auto;width:fit-content;background:#0f1923;border-radius:10px;padding:12px 14px;box-shadow:0 4px 20px rgba(0,0,0,.4);border:1px solid #1a2a3a}
-.seat-row{display:flex;align-items:center;gap:1px}
-.row-label{width:50px;text-align:right;padding-right:8px;font-size:11px;font-weight:600;color:var(--sub);flex-shrink:0}
-.h-aisle{height:18px;display:flex;align-items:center;justify-content:center;width:100%;margin:2px 0}
-.h-aisle{position:relative;height:40px;display:flex;align-items:center;justify-content:center;width:100%;margin:8px 0;background:#1a2a1a;border-top:2px solid #4a7a4a;border-bottom:2px solid #4a7a4a}
-.h-aisle::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:#4a7a4a}
-.h-aisle span{color:#7ab87a;font-size:12px;letter-spacing:6px;padding:6px 30px;background:#1a2a1a;position:relative;z-index:1;font-weight:700;border-radius:4px}
+.seat-grid{display:flex;flex-direction:column;gap:2px;margin:0 auto;width:fit-content;background:#0f1923;border-radius:10px;padding:12px 14px;box-shadow:0 4px 20px rgba(0,0,0,.4);border:1px solid #1a2a3a}
+.seat-row{display:grid;grid-template-columns:50px repeat(36, 30px);align-items:center;gap:1px;min-width:fit-content}
+.row-label{grid-column:1;grid-row:1;text-align:right;padding-right:8px;font-size:11px;font-weight:600;color:var(--sub)}
 
 .seat{width:30px;height:30px;border-radius:5px;border:1px solid;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;user-select:none;flex-shrink:0;min-width:30px;position:relative;-webkit-tap-highlight-color:transparent}
 .seat:active{transform:scale(.9)}
@@ -80,6 +76,10 @@ body{
 .seat.lighting::after{content:'🔦';font-size:11px}
 .seat.aisle{background:#2a3a2a;border:1px dashed #3a5a3a;cursor:default;pointer-events:none;font-size:0}
 .seat.aisle::after{content:'过道';font-size:8px;color:#5a8a5a}
+
+/* Horizontal aisle */
+.h-aisle{grid-column:1 / -1;display:flex;align-items:center;justify-content:center;height:32px;margin:4px 0;background:#1a2a1a;border-top:1px dashed #3a5a3a;border-bottom:1px dashed #3a5a3a}
+.h-aisle span{color:#6a9a6a;font-size:11px;letter-spacing:4px;font-weight:700}
 
 /* Confirm Panel - fixed bottom */
 .confirm-panel{
@@ -262,6 +262,7 @@ function renderGrid() {
   const grid = document.getElementById('seatGrid');
   if (!grid) return;
   grid.innerHTML = '';
+  const cols = typeof GRID_COLS !== 'undefined' ? GRID_COLS : 36;
 
   SEAT_DATA.forEach(rd => {
     if (rd.type === 'aisle') {
@@ -274,16 +275,46 @@ function renderGrid() {
 
     const rowDiv = document.createElement('div');
     rowDiv.className = 'seat-row';
+    rowDiv.style.gridTemplateColumns = '50px repeat(' + cols + ', 30px)';
+
     const lbl = document.createElement('div');
     lbl.className = 'row-label';
     lbl.textContent = rd.label;
     rowDiv.appendChild(lbl);
 
-    rd.seats.forEach(s => {
+    const cellsByCol = {};
+    rd.seats.forEach(s => { cellsByCol[s.col] = s; });
+
+    for (let c = 0; c < cols; c++) {
+      const s = cellsByCol[c];
+      const gridCol = c + 2;
       const el = document.createElement('div');
-      if (s.type === 'aisle') { el.className = 'seat aisle'; rowDiv.appendChild(el); return; }
-      if (s.type === 'bad') { el.className='seat bad'; el.title='损坏'; rowDiv.appendChild(el); return; }
-      if (s.type === 'lighting') { el.className='seat lighting'; el.title='灯光区'; rowDiv.appendChild(el); return; }
+      el.style.gridColumn = gridCol;
+
+      if (!s) {
+        el.style.width = '30px';
+        el.style.height = '30px';
+        rowDiv.appendChild(el);
+        continue;
+      }
+
+      if (s.type === 'aisle') {
+        el.className = 'seat aisle';
+        rowDiv.appendChild(el);
+        continue;
+      }
+      if (s.type === 'bad') {
+        el.className = 'seat bad';
+        el.title = '损坏';
+        rowDiv.appendChild(el);
+        continue;
+      }
+      if (s.type === 'lighting') {
+        el.className = 'seat lighting';
+        el.title = '灯光区';
+        rowDiv.appendChild(el);
+        continue;
+      }
 
       const id = sid(rd.label, s.number);
       const st = seatState[id];
@@ -309,7 +340,7 @@ function renderGrid() {
       el.title = title;
       el.addEventListener('click', () => handleClick(id, rd.label, s.number));
       rowDiv.appendChild(el);
-    });
+    }
 
     grid.appendChild(rowDiv);
   });
