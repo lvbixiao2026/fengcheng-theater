@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>座次表 · 管理导出</title>
+<script src="https://unpkg.com/mqtt@5.10.3/dist/mqtt.min.js"></script>
+<style>
+:root{--bg:#1a1a2e;--text:#e0e0e0;--sub:#888;--accent:#e8b86d}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;padding:20px;
+}
+.container{max-width:600px;width:100%;display:flex;flex-direction:column;gap:16px}
+
+/* Lock screen */
+.lock-screen{display:flex;flex-direction:column;align-items:center;gap:16px;padding:60px 20px}
+.lock-screen h1{color:var(--accent);font-size:22px;letter-spacing:2px}
+.lock-screen p{color:var(--sub);font-size:14px;text-align:center}
+.lock-screen input{
+  width:100%;max-width:280px;background:#1e3050;border:1px solid #2a4560;color:var(--text);
+  padding:10px 14px;border-radius:8px;font-size:16px;outline:none;text-align:center;letter-spacing:2px;
+}
+.lock-screen input:focus{border-color:#42a5f5}
+.lock-screen button{
+  padding:10px 32px;background:#d4a030;color:#1a1a2e;border:none;border-radius:8px;
+  font-size:15px;font-weight:700;cursor:pointer;
+}
+.lock-screen button:hover{background:#c49020}
+.lock-screen .hint{color:#666;font-size:11px;margin-top:-8px}
+
+/* Main */
+.main{display:none;flex-direction:column;gap:12px}
+.header{text-align:center}
+.header h1{font-size:20px;color:var(--accent)}
+.header .sub{color:var(--sub);font-size:12px;margin-top:4px}
+
+.stats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.stat-card{background:#16213e;border:1px solid #2a4560;padding:10px 20px;border-radius:8px;text-align:center;min-width:80px}
+.stat-card .num{font-size:24px;font-weight:700;color:var(--accent)}
+.stat-card .label{font-size:11px;color:var(--sub)}
+
+.seat-list{background:#16213e;border:1px solid #2a4560;border-radius:10px;padding:12px;max-height:50vh;overflow-y:auto}
+.seat-row{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;border-radius:5px;font-size:13px}
+.seat-row:hover{background:#1a2a3a}
+.seat-row .sid{color:var(--accent);font-weight:600}
+.seat-row .name{color:#90caf9}
+
+.btn-row{display:flex;gap:8px}
+.btn{flex:1;padding:12px;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;text-align:center;transition:background .15s}
+.btn-accent{background:#d4a030;color:#1a1a2e}.btn-accent:hover{background:#c49020}
+.btn-primary{background:#1976d2;color:#fff}.btn-primary:hover{background:#1565c0}
+.btn-secondary{background:#2a3a50;color:#aaa}.btn-secondary:hover{background:#3a4a60}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}.toast.err{background:#5c2a2a}
+
+.connecting{text-align:center;color:var(--sub);padding:40px;font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="container" id="app">
+  <!-- Lock Screen -->
+  <div class="lock-screen" id="lockScreen">
+    <h1>🔐 管理导出</h1>
+    <p>请输入管理密码查看座次数据</p>
+    <input type="password" id="pwdInput" placeholder="管理密码" maxlength="20" autocomplete="off">
+    <p class="hint">默认密码：fc8888</p>
+    <button onclick="unlock()">进入</button>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main" id="mainPanel">
+    <div class="header">
+      <h1>🎭 凤城剧院座次表</h1>
+      <p class="sub">管理导出 · 实时数据</p>
+    </div>
+    <div class="stats">
+      <div class="stat-card"><div class="num" id="confirmedCount">0</div><div class="label">已确认</div></div>
+      <div class="stat-card"><div class="num" id="pendingCount">0</div><div class="label">待确认</div></div>
+      <div class="stat-card"><div class="num" id="totalCount">557</div><div class="label">总座位</div></div>
+    </div>
+    <div id="connectingMsg" class="connecting">🔗 正在连接实时数据...</div>
+    <div class="seat-list" id="seatList" style="display:none"><div style="color:#555;text-align:center;padding:20px">暂无选座</div></div>
+    <div class="btn-row">
+      <button class="btn btn-accent" onclick="exportCSV()">📥 导出 CSV</button>
+      <button class="btn btn-primary" onclick="copyList()">📋 复制列表</button>
+      <button class="btn btn-secondary" onclick="refreshData()">🔄 刷新</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== Auth ==========
+const ADMIN_KEY = 'fc8888';
+let seatState = {};
+
+function unlock() {
+  const pwd = document.getElementById('pwdInput').value.trim();
+  if (!pwd || pwd !== ADMIN_KEY) {
+    showToast('密码错误', true);
+    return;
+  }
+  document.getElementById('lockScreen').style.display = 'none';
+  document.getElementById('mainPanel').style.display = 'flex';
+  connectMQTT();
+}
+
+document.getElementById('pwdInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') unlock();
+});
+
+// ========== MQTT ==========
+const BROKER = 'wss://broker.hivemq.com:8884/mqtt';
+const TOPIC = 'fengcheng-theater-557/seat/';
+let client = null;
+
+function connectMQTT() {
+  client = mqtt.connect(BROKER, {
+    clientId: 'fc-admin-' + Math.random().toString(36).slice(2,8),
+    clean: true,
+    connectTimeout: 10000,
+    reconnectPeriod: 3000
+  });
+
+  client.on('connect', () => {
+    console.log('[Admin MQTT] OK');
+    document.getElementById('connectingMsg').style.display = 'none';
+    document.getElementById('seatList').style.display = 'block';
+    client.subscribe(TOPIC + '#', {qos:1});
+  });
+
+  client.on('message', (topic, msg) => {
+    const seatId = topic.toString().replace(TOPIC, '');
+    const payload = msg.toString();
+    if (!payload || payload === 'null') {
+      delete seatState[seatId];
+    } else {
+      try {
+        seatState[seatId] = JSON.parse(payload);
+      } catch(e) {}
+    }
+    updateUI();
+  });
+
+  client.on('error', e => console.error('MQTT err', e));
+}
+
+// ========== UI ==========
+// Row order from seat data
+let rowOrder = {};
+
+function updateUI() {
+  document.getElementById('confirmedCount').textContent =
+    Object.values(seatState).filter(s => !s.pending).length;
+  document.getElementById('pendingCount').textContent =
+    Object.values(seatState).filter(s => s.pending).length;
+
+  const entries = Object.entries(seatState);
+  const listEl = document.getElementById('seatList');
+
+  if (entries.length === 0) {
+    listEl.innerHTML = '<div style="color:#555;text-align:center;padding:20px">暂无选座</div>';
+    return;
+  }
+
+  // Use seat order from the data if available, otherwise sort by seat ID
+  let sorted;
+  if (Object.keys(rowOrder).length > 0) {
+    sorted = entries.sort(([a],[b]) => {
+      const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
+      const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];
+      return ((rowOrder[ra]??999)-(rowOrder[rb]??999)) || (sa-sb);
+    });
+  } else {
+    sorted = entries;
+  }
+
+  listEl.innerHTML = sorted.map(([seatId, info]) => {
+    const [r,n] = [seatId.split('-')[0], seatId.split('-').slice(1).join('-')];
+    const tag = info.pending ? '⏳' : '✓';
+    const name = info.pending ? '待确认' : (info.name || '未知');
+    const pendingClass = info.pending ? 'color:#e8b86d' : '';
+    return `<div class="seat-row">
+      <span class="sid">${tag} ${r}${n}号</span>
+      <span class="name" style="${pendingClass}">${name}</span>
+    </div>`;
+  }).join('');
+}
+
+// ========== Row Order Loader ==========
+function loadRowOrder() {
+  // Load seats_data.js to get row ordering
+  const script = document.createElement('script');
+  script.src = 'seats_data.js';
+  script.onload = () => {
+    if (typeof SEAT_DATA !== 'undefined') {
+      SEAT_DATA.forEach((rd, i) => {
+        if (rd.type === 'row') rowOrder[rd.label] = i;
+      });
+    }
+  };
+  document.head.appendChild(script);
+}
+
+// ========== Export ==========
+function getSortedConfirmed() {
+  const confirmed = Object.entries(seatState).filter(([,v]) => !v.pending);
+  confirmed.sort(([a],[b]) => {
+    const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
+    const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];
+    return ((rowOrder[ra]??999)-(rowOrder[rb]??999)) || (sa-sb);
+  });
+  return confirmed;
+}
+
+function exportCSV() {
+  const confirmed = getSortedConfirmed();
+  if (!confirmed.length) { showToast('无已确认选座', true); return; }
+
+  let csv = '\uFEFF排,座位号,姓名,完整座位\n';
+  confirmed.forEach(([sid,info]) => {
+    const [r,n] = [sid.split('-')[0], sid.split('-').slice(1).join('-')];
+    csv += `${r},${n}号,${info.name},${r}${n}号\n`;
+  });
+  csv += `\n共 ${confirmed.length} 人\n导出: ${new Date().toLocaleString('zh-CN')}\n凤城剧院座次表\n`;
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`凤城剧院座次表_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('已导出 ' + confirmed.length + ' 人');
+}
+
+function copyList() {
+  const confirmed = getSortedConfirmed();
+  if (!confirmed.length) { showToast('无已确认选座', true); return; }
+
+  let text = '凤城剧院座次表\n═══════════════\n';
+  confirmed.forEach(([sid,info]) => {
+    const [r,n] = [sid.split('-')[0], sid.split('-').slice(1).join('-')];
+    text += `${r}${n}号\t${info.name}\n`;
+  });
+  text += `\n共 ${confirmed.length} 人`;
+
+  navigator.clipboard.writeText(text).then(() => showToast('已复制')).catch(() => showToast('复制失败', true));
+}
+
+function refreshData() {
+  showToast('数据已是最新');
+  updateUI();
+}
+
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(isErr?' err':'');
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Load row order on init
+loadRowOrder();
+</script>
+</body>
+</html>
