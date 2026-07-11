@@ -2,471 +2,185 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=0.45, minimum-scale=0.15, maximum-scale=3.0, user-scalable=yes">
+<meta name="viewport" content="width=device-width, initial-scale=0.5, minimum-scale=0.2, maximum-scale=3.0, user-scalable=yes">
 <title>凤城剧院座次表</title>
-<meta property="og:title" content="凤城剧院座次表">
-<meta property="og:description" content="点击选座，输入微信名确认，实时同步">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="凤城剧院">
-<meta name="description" content="凤城剧院在线选座系统">
-<script src="mqtt.min.js"></script>
-<script>window.mqtt||document.write('<script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js"><\/script>')</script>
 <style>
-:root{
-  --bg:#1a1a2e;--text:#e0e0e0;--sub:#888;
-  --free-bg:#2d4a3e;--free-bd:#4caf84;--free-tx:#81c784;
-  --pending-bg:#3a3520;--pending-bd:#c49020;--pending-tx:#e8b86d;
-  --mine-bg:#1a3a5c;--mine-bd:#42a5f5;--mine-tx:#90caf9;
-  --taken-bg:#3a2a1a;--taken-bd:#a06020;--taken-tx:#e8b86d;
-  --bad-bg:#4a2020;--bad-bd:#8b3a3a;
-  --accent:#e8b86d;
-}
+:root{--bg:#1a1a2e;--accent:#e8b86d;--text:#e0e0e0;--sub:#888;--free-bg:#2d4a3e;--free-bd:#4caf84;--free-tx:#81c784;--mine-bg:#1a3a5c;--mine-bd:#42a5f5;--mine-tx:#90caf9;--taken-bg:#3a2a1a;--taken-bd:#a06020;--taken-tx:#e8b86d;--bad-bg:#4a2020;--bad-bd:#8b3a3a}
 *{margin:0;padding:0;box-sizing:border-box}
-body{
-  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
-  background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;
-  padding:10px 0 80px;
-}
-.container{max-width:1400px;width:100%;display:flex;flex-direction:column;gap:10px}
-
-/* Header */
-.header{text-align:center;padding:8px 0 0;width:100%}
-.header h1{font-size:20px;font-weight:700;color:var(--accent);letter-spacing:2px}
-.header .sub{color:var(--sub);margin-top:2px;font-size:11px}
-
-/* Stage */
-.stage-area{display:flex;justify-content:center}
-.stage{background:linear-gradient(180deg,#1b3a5c,#16213e);border:1px solid #2a4560;color:var(--accent);padding:8px 80px;border-radius:6px;font-size:13px;letter-spacing:2px}
-
-/* Bar */
-.bar{display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--sub)}
-.bar .val{color:var(--accent);font-weight:600}
-.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;background:#4caf84}
-
-/* Legend */
-.legend{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--sub)}
-.legend i{display:inline-block;width:18px;height:18px;border-radius:4px;border:2px solid;vertical-align:-4px;margin-right:4px}
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.container{max-width:1400px;margin:0 auto;padding:10px 8px 90px;display:flex;flex-direction:column;align-items:center;gap:10px}
+h1{font-size:22px;color:var(--accent);text-align:center}
+.sub{color:var(--sub);font-size:12px;text-align:center}
+.stage{background:#1b3a5c;color:var(--accent);padding:6px 60px;border-radius:6px;font-size:13px}
+.bar{font-size:13px;color:var(--sub);text-align:center}
+.bar .val{color:var(--accent);font-weight:700}
+.legend{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;font-size:11px;color:var(--sub)}
+.legend i{display:inline-block;width:16px;height:16px;border-radius:3px;border:2px solid;vertical-align:-3px;margin-right:3px}
 .legend .lf{background:var(--free-bg);border-color:var(--free-bd)}
-.legend .lp{background:var(--pending-bg);border-color:var(--pending-bd)}
 .legend .lm{background:var(--mine-bg);border-color:var(--mine-bd)}
 .legend .lt{background:var(--taken-bg);border-color:var(--taken-bd)}
 .legend .lb{background:var(--bad-bg);border-color:var(--bad-bd)}
 .legend .ll{background:#3a2a1a;border-color:#8b6914}
 
-/* Grid */
-.seat-grid-wrapper{overflow-x:auto;padding:6px 0 10px;width:100%;-webkit-overflow-scrolling:touch}
-.seat-grid{display:flex;flex-direction:column;gap:2px;margin:0 auto;width:fit-content;background:#0f1923;border-radius:10px;padding:12px 14px;box-shadow:0 4px 20px rgba(0,0,0,.4);border:1px solid #1a2a3a}
-.seat-row{display:grid;grid-template-columns:36px repeat(36, 22px);align-items:center;gap:1px;min-width:fit-content}
-.row-label{grid-column:1;grid-row:1;text-align:right;padding-right:4px;font-size:9px;font-weight:600;color:var(--sub)}
+.grid-wrap{overflow-x:auto;width:100%;-webkit-overflow-scrolling:touch;padding:5px 0}
+#seatGrid{display:flex;flex-direction:column;gap:2px;width:fit-content;margin:0 auto;background:#0f1923;border-radius:10px;padding:12px 14px;border:1px solid #1a2a3a}
 
-.seat{width:22px;height:22px;border-radius:3px;border:1px solid;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:600;user-select:none;flex-shrink:0;min-width:22px;position:relative;-webkit-tap-highlight-color:transparent}
-.seat::before{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;z-index:-1}
-.seat:active{transform:scale(.88)}
-
+.seat-row{display:grid;align-items:center;gap:1px}
+.row-label{grid-column:1;grid-row:1;text-align:right;padding-right:4px;font-size:10px;font-weight:600;color:var(--sub)}
+.seat{width:22px;height:22px;border-radius:3px;border:1px solid;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;cursor:pointer;transition:transform .12s;user-select:none;flex-shrink:0;position:relative;-webkit-tap-highlight-color:transparent}
+.seat::before{content:'';position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px}
 .seat.free{background:var(--free-bg);border-color:var(--free-bd);color:var(--free-tx)}
-.seat.free:hover{background:#3a6a4e;border-color:#6fcf97;transform:scale(1.15);z-index:2;box-shadow:0 0 8px rgba(76,175,132,.4)}
+.seat.free:hover{transform:scale(1.2);z-index:1;box-shadow:0 0 6px rgba(76,175,132,.5)}
+.seat.mine{background:var(--mine-bg);border-color:var(--mine-bd);color:var(--mine-tx);transform:scale(1.08);box-shadow:0 0 6px rgba(66,165,245,.4)}
+.seat.taken{background:var(--taken-bg);border-color:var(--taken-bd);color:var(--taken-tx);cursor:not-allowed}
+.seat.bad{background:var(--bad-bg);border-color:var(--bad-bd);cursor:not-allowed}
+.seat.lighting{background:#3a2a1a;border-color:#8b6914;color:#8b6914;cursor:default}
+.seat.aisle{background:#2a3a2a;border:1px dashed #3a5a3a;cursor:default;pointer-events:none}
 
-.seat.pending{background:var(--pending-bg);border-color:var(--pending-bd);color:var(--pending-tx);transform:scale(1.06);box-shadow:0 0 6px rgba(200,160,30,.3)}
-.seat.pending:hover{background:#4a4520}
-.seat.pending::after{content:'?';font-size:16px;position:absolute;color:#c49020}
-
-.seat.mine{background:var(--mine-bg);border-color:var(--mine-bd);color:var(--mine-tx);transform:scale(1.06);box-shadow:0 0 6px rgba(66,165,245,.4)}
-.seat.mine:hover{background:#2a4a6c}
-.seat.mine::after{content:'✓';font-size:14px;position:absolute;color:#64b5f6}
-
-.seat.taken{background:var(--taken-bg);border-color:var(--taken-bd);color:var(--taken-tx);cursor:not-allowed;font-size:9px}
-.seat.taken::after{content:'已选';font-size:9px;color:#a06020}
-
-.seat.bad{background:var(--bad-bg);border-color:var(--bad-bd);color:#666;cursor:not-allowed}
-.seat.bad::after{content:'✕';font-size:10px;color:#c44}
-.seat.lighting{background:#3a2a1a;border-color:#8b6914;color:#8b6914;cursor:default;font-size:0}
-.seat.lighting::after{content:'🔦';font-size:11px}
-.seat.aisle{background:#2a3a2a;border:1px dashed #3a5a3a;cursor:default;pointer-events:none;font-size:0}
-.seat.aisle::after{content:'过道';font-size:8px;color:#5a8a5a}
-
-/* Horizontal aisle */
-.h-aisle{display:grid !important;align-items:center}
-
-/* Confirm Panel - fixed bottom */
-.confirm-panel{
-  position:fixed;bottom:0;left:0;right:0;
-  background:#16213e;border-top:1px solid #2a4560;
-  padding:10px 16px;z-index:100;
-  display:flex;align-items:center;gap:10px;
-  box-shadow:0 -4px 20px rgba(0,0,0,.5);
-  flex-wrap:wrap;justify-content:center;
-}
-.confirm-panel .seat-count{color:var(--accent);font-weight:700;font-size:15px;white-space:nowrap}
-.confirm-panel input{
-  flex:1;min-width:120px;max-width:200px;
-  background:#1e3050;border:1px solid #2a4560;color:var(--text);
-  padding:8px 12px;border-radius:6px;font-size:15px;outline:none;
-  transition:border-color .2s;
-}
-.confirm-panel input:focus{border-color:#42a5f5}
-.confirm-panel input::placeholder{color:#555}
-.confirm-panel button{
-  padding:8px 18px;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s;
-}
-.btn-confirm{background:#d4a030;color:#1a1a2e}.btn-confirm:hover{background:#c49020}
-.btn-confirm:disabled{opacity:.4;cursor:not-allowed}
-.btn-cancel{background:#2a3a50;color:#aaa}.btn-cancel:hover{background:#3a4a60}
-
-/* Sidebar */
-.main-content{display:flex;gap:20px;align-items:flex-start}
-.grid-section{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
-.sidebar{width:260px;background:#16213e;border-radius:10px;padding:16px;box-shadow:0 2px 16px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px;flex-shrink:0;position:sticky;top:10px;border:1px solid #2a4560;max-height:calc(100vh - 120px);overflow-y:auto}
-.sidebar h3{font-size:13px;font-weight:700;color:var(--accent)}
-.my-seats-list{max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
-.my-seat-item{display:flex;justify-content:space-between;align-items:center;background:#1a3050;border:1px solid #2a4560;padding:5px 8px;border-radius:5px;font-size:12px}
-.my-seat-item .sl{color:var(--accent);font-weight:600}
-.my-seat-item .remove-btn{background:none;border:none;color:#e57373;cursor:pointer;font-size:14px;padding:0 4px}
-.my-seat-item .remove-btn:hover{color:#ef5350}
-
-.all-seats-list{max-height:200px;overflow-y:auto;font-size:11px;display:flex;flex-direction:column;gap:1px}
-.all-seat-row{display:flex;justify-content:space-between;padding:2px 5px;border-radius:3px}
-.all-seat-row:hover{background:#1a2a3a}
-.all-seat-row .sid{color:var(--accent);min-width:65px}
-.all-seat-row .sowner{color:#90caf9}
-
-.empty-hint{color:#555;text-align:center;font-size:12px;padding:16px 0}
-
-.summary{border-top:1px solid #2a4560;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;font-weight:600}
-.btn-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
-.btn{flex:1;min-width:60px;padding:7px 10px;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center}
-.btn-accent{background:#d4a030;color:#1a1a2e}.btn-accent:hover{background:#c49020}
-.btn-primary{background:#1976d2;color:#fff}.btn-primary:hover{background:#1565c0}
-.btn-secondary{background:#2a3a50;color:#aaa}.btn-secondary:hover{background:#3a4a60}
+.panel{position:fixed;bottom:0;left:0;right:0;background:#16213e;border-top:1px solid #2a4560;padding:10px 12px;z-index:100;display:none;align-items:center;gap:8px;justify-content:center;box-shadow:0 -4px 16px rgba(0,0,0,.5)}
+.panel span{color:var(--accent);font-weight:700;font-size:14px}
+.panel input{flex:1;max-width:180px;background:#1e3050;border:1px solid #2a4560;color:var(--text);padding:8px 10px;border-radius:6px;font-size:15px;outline:none}
+.panel input:focus{border-color:#42a5f5}
+.panel input::placeholder{color:#555}
+.panel button{padding:8px 16px;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer}
+.btn-ok{background:#d4a030;color:#1a1a2e}.btn-ok:disabled{opacity:.4}
+.btn-cancel{background:#2a3a50;color:#aaa}
 
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap}
 .toast.show{opacity:1}.toast.err{background:#5c2a2a}
 
-@media(max-width:900px){
-  .main-content{flex-direction:column}
-  .sidebar{width:100%;position:static;max-height:none}
-  .stage{padding:6px 40px;font-size:11px}
-  .seat{width:20px;height:20px;min-width:20px;font-size:6px}
-  .row-label{width:30px;font-size:8px}
-  .seat.taken::after{font-size:5px}
-  .seat.mine::after{font-size:8px}
+@media(max-width:768px){
+  .seat{width:20px;height:20px;font-size:6px}
+  .row-label{font-size:8px}
+  .seat::before{top:-10px;left:-10px;right:-10px;bottom:-10px}
 }
 </style>
 </head>
 <body>
-
 <div class="container">
-  <div class="header">
-    <h1>🎭 凤城剧院座次表</h1>
-    <p class="sub">点击座位 · 输入微信名 · 即刻确认</p>
-  </div>
-  <div class="stage-area"><div class="stage">⬆ 舞 台 ⬆</div></div>
-  <div class="bar">
-    <div><span class="dot"></span>已选：<span class="val" id="takenCount">0</span> / 557 座</div>
-  </div>
-  <div class="legend">
-    <span><i class="lf"></i>可选</span>
-    <span><i class="lm"></i>我的</span>
-    <span><i class="lt"></i>已选</span>
-    <span><i class="lb"></i>坏座</span>
-    <span><i class="ll"></i>灯光区</span>
-  </div>
-
-  <div class="seat-grid-wrapper">
-    <div class="seat-grid" id="seatGrid"></div>
-  </div>
+<h1>🎭 凤城剧院座次表</h1>
+<p class="sub">点击座位 · 输入微信名 · 即刻确认</p>
+<div class="stage">⬆ 舞 台 ⬆</div>
+<div class="bar">已选：<span class="val" id="cnt">0</span> / 557 座</div>
+<div class="legend">
+<span><i class="lf"></i>可选</span><span><i class="lm"></i>我的</span><span><i class="lt"></i>已选</span><span><i class="lb"></i>坏座</span><span><i class="ll"></i>灯光区</span>
 </div>
-
-<!-- Confirm Panel -->
-<div class="confirm-panel" id="confirmPanel" style="display:none">
-  <span class="seat-count" id="panelCount">已选 0 座</span>
-  <input type="text" id="nameInput" placeholder="输入你的微信名或姓名" maxlength="20" autocomplete="off">
-  <button class="btn-confirm" id="confirmBtn" onclick="doConfirm()">确认选座</button>
-  <button class="btn-cancel" onclick="cancelAll()">取消</button>
+<div class="grid-wrap"><div id="seatGrid"></div></div>
 </div>
-
+<div class="panel" id="panel">
+<span id="pnlSeat"></span>
+<input id="pnlName" placeholder="输入你的微信名或姓名" maxlength="20" autocomplete="off">
+<button class="btn-ok" id="btnOk" onclick="confirmSeat()">确认选座</button>
+<button class="btn-cancel" onclick="cancelPick()">取消</button>
+</div>
 <div class="toast" id="toast"></div>
 
 <script src="seats_data.js"></script>
 <script>
-// ========== MQTT ==========
-const BROKER = 'wss://broker.hivemq.com:8884/mqtt';
-const TOPIC = 'fengcheng-theater-557/seat/';
+// === Load MQTT ===
+(function(){
+  var s=document.createElement('script');
+  s.src='mqtt.min.js';
+  s.onerror=function(){
+    s.src='https://cdn.jsdelivr.net/npm/mqtt@5.10.3/dist/mqtt.min.js';
+  };
+  s.onload=initMQTT;
+  document.head.appendChild(s);
+})();
 
-let client = null;
-let seatState = {}; // seatId -> {name, ts}
-const mySid = 'sess-' + Math.random().toString(36).slice(2,10);
-let mySelected = null; // currently selected seat (local only, not yet confirmed)
-let mqttAvailable = false;
+var seatState={}, myPick=null, client;
 
-function connectMQTT() {
-  if (typeof mqtt === 'undefined') {
-    console.warn('[MQTT] library not loaded - running without sync');
-    client = { publish: function(){}, subscribe: function(){}, on: function(){}, end: function(){} };
-    updateUI();
-    return;
-  }
-  mqttAvailable = true;
-  client = mqtt.connect(BROKER, {
-    clientId: 'fc-' + Math.random().toString(36).slice(2,8),
-    clean: true,
-    connectTimeout: 10000,
-    reconnectPeriod: 3000
-  });
+// Render now, then load MQTT
+render();
 
-  client.on('connect', () => {
-    console.log('[MQTT] OK');
-    client.subscribe(TOPIC + '#', {qos:1}, (err) => {
-      if (err) console.error('sub err', err);
+function initMQTT(){
+  if(typeof mqtt!=='undefined'){
+    client=mqtt.connect('wss://broker.hivemq.com:8884/mqtt',{
+      clientId:'fc-'+Math.random().toString(36).slice(2,8),
+      clean:true,connectTimeout:1e4,reconnectPeriod:3000
     });
-  });
+    client.on('connect',function(){client.subscribe('fengcheng-theater-557/seat/#',{qos:1})});
+    client.on('message',function(t,m){var id=t.toString().replace('fengcheng-theater-557/seat/','');var p=m.toString();if(!p||p==='null')delete seatState[id];else try{seatState[id]=JSON.parse(p)}catch(e){}render()});
+    client.on('error',function(e){console.warn('MQTT:',e)});
+  }else{
+    client={publish:function(){}};
+  }
+  render();
+}
 
-  client.on('message', (topic, msg) => {
-    const seatId = topic.toString().replace(TOPIC, '');
-    const payload = msg.toString();
-    if (!payload || payload === 'null') {
-      delete seatState[seatId];
-    } else {
-      try {
-        seatState[seatId] = JSON.parse(payload);
-      } catch(e) {}
+function render(){
+  var g=document.getElementById('seatGrid');
+  if(!g)return;
+  g.innerHTML='';
+  var cols=typeof GRID_COLS!=='undefined'?GRID_COLS:36;
+  var cellW=window.innerWidth<769?'20px':'22px';
+  var lblW=window.innerWidth<769?'30px':'36px';
+
+  SEAT_DATA.forEach(function(rd){
+    if(rd.type==='aisle'){
+      var d=document.createElement('div');
+      d.className='seat-row';
+      d.style.gridTemplateColumns=lblW+' repeat('+cols+','+cellW+')';
+      d.innerHTML='<span style="grid-column:1/-1;display:flex;align-items:center;justify-content:center;height:48px;background:#1a3020;border-top:2px solid #4a7a4a;border-bottom:2px solid #4a7a4a;color:#7ab87a;font-size:14px;letter-spacing:10px;font-weight:700;margin:8px 0">⬇  过  道  ⬇</span>';
+      g.appendChild(d);return;
     }
-    updateUI();
-  });
+    var row=document.createElement('div');
+    row.className='seat-row';
+    row.style.gridTemplateColumns=lblW+' repeat('+cols+','+cellW+')';
+    var lbl=document.createElement('div');
+    lbl.className='row-label';lbl.textContent=rd.label;
+    row.appendChild(lbl);
+    var map={};
+    rd.seats.forEach(function(s){map[s.col]=s});
+    for(var c=0;c<cols;c++){
+      var s=map[c],el=document.createElement('div');
+      el.style.gridColumn=c+2;
+      if(!s){el.style.width=cellW;el.style.height=cellW;row.appendChild(el);continue}
+      if(s.type==='aisle'){el.className='seat aisle';row.appendChild(el);continue}
+      if(s.type==='bad'){el.className='seat bad';el.title='损坏';row.appendChild(el);continue}
+      if(s.type==='lighting'){el.className='seat lighting';el.title='灯光区';row.appendChild(el);continue}
 
-  client.on('error', e => console.error('MQTT err', e));
-}
-
-connectMQTT();
-
-// ========== Grid ==========
-function sid(row, num) { return row + '-' + num; }
-
-function updateUI() {
-  renderGrid();
-  document.getElementById('takenCount').textContent =
-    Object.keys(seatState).length;
-}
-
-function renderGrid() {
-  const grid = document.getElementById('seatGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  const cols = typeof GRID_COLS !== 'undefined' ? GRID_COLS : 36;
-
-  SEAT_DATA.forEach(rd => {
-    if (rd.type === 'aisle') {
-      const d = document.createElement('div');
-      d.className = 'seat-row h-aisle';
-      d.style.gridTemplateColumns = '36px repeat(' + cols + ', 22px)';
-      d.innerHTML = '<span style="grid-column:1 / -1;display:flex;align-items:center;justify-content:center;height:48px;background:#1a3020;border-top:2px solid #4a7a4a;border-bottom:2px solid #4a7a4a;color:#7ab87a;font-size:14px;letter-spacing:10px;font-weight:700;margin:8px 0">⬇  过  道  ⬇</span>';
-      grid.appendChild(d);
-      return;
+      var id=rd.label+'-'+s.number,st=seatState[id],cls='free',title=rd.label+s.number+'号';
+      if(st){cls='taken';title+=' — '+(st.name||'已选')}else if(myPick===id){cls='mine'}
+      el.className='seat '+cls;
+      if(!st)el.textContent=s.number;
+      el.title=title;
+      (function(i,l,n){el.onclick=function(){onSeat(i,l,n)}})(id,rd.label,s.number);
+      row.appendChild(el);
     }
-
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'seat-row';
-    rowDiv.style.gridTemplateColumns = '36px repeat(' + cols + ', 22px)';
-
-    const lbl = document.createElement('div');
-    lbl.className = 'row-label';
-    lbl.textContent = rd.label;
-    rowDiv.appendChild(lbl);
-
-    const cellsByCol = {};
-    rd.seats.forEach(s => { cellsByCol[s.col] = s; });
-
-    for (let c = 0; c < cols; c++) {
-      const s = cellsByCol[c];
-      const gridCol = c + 2;
-      const el = document.createElement('div');
-      el.style.gridColumn = gridCol;
-
-      if (!s) {
-        el.style.width = '22px';
-        el.style.height = '22px';
-        rowDiv.appendChild(el);
-        continue;
-      }
-
-      if (s.type === 'aisle') {
-        el.className = 'seat aisle';
-        rowDiv.appendChild(el);
-        continue;
-      }
-      if (s.type === 'bad') {
-        el.className = 'seat bad';
-        el.title = '损坏';
-        rowDiv.appendChild(el);
-        continue;
-      }
-      if (s.type === 'lighting') {
-        el.className = 'seat lighting';
-        el.title = '灯光区';
-        rowDiv.appendChild(el);
-        continue;
-      }
-
-      const id = sid(rd.label, s.number);
-      const st = seatState[id];
-      let cls = 'free', title = rd.label + s.number + '号';
-
-      if (st) {
-        cls = 'taken';
-        title += ' — ' + (st.name || '已选');
-      }
-
-      // Highlight locally selected (not yet confirmed)
-      if (mySelected === id) {
-        cls = 'mine';
-        title += ' — 点击后待输入姓名';
-      }
-
-      el.className = 'seat ' + cls;
-      if (!st) el.textContent = s.number;
-      el.title = title;
-      el.addEventListener('click', () => handleClick(id, rd.label, s.number));
-      rowDiv.appendChild(el);
-    }
-
-    grid.appendChild(rowDiv);
+    g.appendChild(row);
   });
+  document.getElementById('cnt').textContent=Object.keys(seatState).length;
 }
 
-function handleClick(seatId, row, num) {
-  if (mqttAvailable && (!client || !client.connected)) { showToast('连接中，请稍候', true); return; }
-
-  const st = seatState[seatId];
-
-  // Already confirmed
-  if (st) {
-    showToast(row + num + '号 已被' + (st.name || '他人') + '选择', true);
-    return;
-  }
-
-  // Toggle off if same seat clicked again
-  if (mySelected === seatId) {
-    mySelected = null;
-    updateUI();
-    updateConfirmPanel();
-    return;
-  }
-
-  // Select this seat (local only, no MQTT yet)
-  mySelected = seatId;
-  updateUI();
-  updateConfirmPanel();
+function onSeat(id,row,num){
+  if(seatState[id]){toast(row+num+'号 已被选',1);return}
+  if(myPick===id){myPick=null;render();hidePanel();return}
+  myPick=id;render();
+  document.getElementById('pnlSeat').textContent=row+num+'号';
+  document.getElementById('pnlName').value='';
+  document.getElementById('btnOk').disabled=false;
+  document.getElementById('panel').style.display='flex';
+  document.getElementById('pnlName').focus();
 }
 
-function updateConfirmPanel() {
-  const panel = document.getElementById('confirmPanel');
-  if (!mySelected) {
-    panel.style.display = 'none';
-    document.getElementById('nameInput').value = '';
-    return;
-  }
-  panel.style.display = 'flex';
-  document.getElementById('panelCount').textContent = '已选 1 座';
-  document.getElementById('confirmBtn').disabled = false;
-  document.getElementById('nameInput').focus();
+function confirmSeat(){
+  var n=document.getElementById('pnlName').value.trim();
+  if(!n){toast('请输入微信名',1);return}
+  var ex=Object.entries(seatState).find(function(e){return e[1].name===n});
+  if(ex){toast(n+' 已选了 '+ex[0].replace('-','')+'号',1);return}
+  document.getElementById('btnOk').disabled=true;
+  var p=JSON.stringify({name:n,ts:Date.now()});
+  client.publish('fengcheng-theater-557/seat/'+myPick,p,{qos:1,retain:true});
+  if(typeof mqtt==='undefined')seatState[myPick]={name:n,ts:Date.now()};
+  toast('已选座 → '+n);
+  myPick=null;hidePanel();render();
 }
 
-// ========== Confirm ==========
-function doConfirm() {
-  const name = document.getElementById('nameInput').value.trim();
-  if (!name) { showToast('请输入微信名', true); return; }
-  if (!mySelected) return;
-
-  // Check if name already has a confirmed seat
-  const existing = Object.entries(seatState).find(([,info]) => info.name === name);
-  if (existing) {
-    showToast('「' + name + '」已选了 ' + existing[0].replace('-','') + '号，每人限选一个', true);
-    return;
-  }
-
-  document.getElementById('confirmBtn').disabled = true;
-
-  const payload = JSON.stringify({name: name, ts: Date.now()});
-  client.publish(TOPIC + mySelected, payload, {qos:1, retain:true});
-  if (!mqttAvailable) seatState[mySelected] = {name: name, ts: Date.now()};
-
-  showToast('已选座 → ' + name);
-  mySelected = null;
-  document.getElementById('nameInput').value = '';
-  updateConfirmPanel();
-  if (!mqttAvailable) updateUI();
-}
-
-function cancelAll() {
-  if (!mySelected) return;
-  mySelected = null;
-  document.getElementById('nameInput').value = '';
-  updateConfirmPanel();
-  updateUI();
-  showToast('已取消选择');
-}
-
-// ========== Export ==========
-function exportCSV() {
-  const confirmed = Object.entries(seatState);
-  if (!confirmed.length) { showToast('无已选座位', true); return; }
-
-  const rowOrder = {};
-  SEAT_DATA.forEach((rd,i) => { if(rd.type==='row') rowOrder[rd.label]=i; });
-  confirmed.sort(([a],[b]) => {
-    const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
-    const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];
-    return ((rowOrder[ra]??999)-(rowOrder[rb]??999)) || (sa-sb);
-  });
-
-  let csv = '\uFEFF排,座位号,姓名,完整座位\n';
-  confirmed.forEach(([sid,info]) => {
-    const [r,n] = [sid.split('-')[0], sid.split('-').slice(1).join('-')];
-    csv += `${r},${n}号,${info.name},${r}${n}号\n`;
-  });
-  csv += `\n共 ${confirmed.length} 人\n导出: ${new Date().toLocaleString('zh-CN')}\n凤城剧院座次表\n`;
-
-  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url; a.download=`凤城剧院座次表_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click(); URL.revokeObjectURL(url);
-  showToast('已导出 ' + confirmed.length + ' 人');
-}
-
-function copyList() {
-  const confirmed = Object.entries(seatState);
-  if (!confirmed.length) { showToast('无已选座位', true); return; }
-
-  const rowOrder = {};
-  SEAT_DATA.forEach((rd,i) => { if(rd.type==='row') rowOrder[rd.label]=i; });
-  confirmed.sort(([a],[b]) => {
-    const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
-    const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];
-    return ((rowOrder[ra]??999)-(rowOrder[rb]??999)) || (sa-sb);
-  });
-
-  let text = '凤城剧院座次表\n═══════════════\n';
-  confirmed.forEach(([sid,info]) => {
-    const [r,n] = [sid.split('-')[0], sid.split('-').slice(1).join('-')];
-    text += `${r}${n}号\t${info.name}\n`;
-  });
-  text += `\n共 ${confirmed.length} 人`;
-
-  navigator.clipboard.writeText(text).then(() => showToast('已复制')).catch(() => showToast('复制失败', true));
-}
-
-function showToast(msg, isErr) {
-  const t = document.getElementById('toast');
-  t.textContent=msg; t.className='toast'+(isErr?' err':'');
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
-}
-
-// Enter key in name input
-document.getElementById('nameInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') doConfirm();
-});
+function cancelPick(){myPick=null;render();hidePanel()}
+function hidePanel(){document.getElementById('panel').style.display='none';document.getElementById('pnlName').value=''}
+function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast'+(e?' err':'');t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},2200)}
+document.getElementById('pnlName').addEventListener('keydown',function(e){if(e.key==='Enter')confirmSeat()});
 </script>
 </body>
 </html>
