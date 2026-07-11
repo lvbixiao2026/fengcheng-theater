@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>凤城剧院座次表</title>
+<script src="https://unpkg.com/mqtt@5.10.3/dist/mqtt.min.js"></script>
+<style>
+:root{
+  --bg:#1a1a2e;--text:#e0e0e0;--sub:#888;
+  --free-bg:#2d4a3e;--free-bd:#4caf84;--free-tx:#81c784;
+  --pending-bg:#3a3520;--pending-bd:#c49020;--pending-tx:#e8b86d;
+  --mine-bg:#1a3a5c;--mine-bd:#42a5f5;--mine-tx:#90caf9;
+  --taken-bg:#3a2a1a;--taken-bd:#a06020;--taken-tx:#e8b86d;
+  --bad-bg:#4a2020;--bad-bd:#8b3a3a;
+  --accent:#e8b86d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
+  background:var(--bg);color:var(--text);min-height:100vh;display:flex;justify-content:center;
+  padding:10px 0 80px;
+}
+.container{max-width:1400px;width:100%;display:flex;flex-direction:column;gap:10px}
+
+/* Header */
+.header{text-align:center;padding:8px 0 0}
+.header h1{font-size:20px;font-weight:700;color:var(--accent);letter-spacing:2px}
+.header .sub{color:var(--sub);margin-top:2px;font-size:11px}
+
+/* Stage */
+.stage-area{display:flex;justify-content:center}
+.stage{background:linear-gradient(180deg,#1b3a5c,#16213e);border:1px solid #2a4560;color:var(--accent);padding:8px 80px;border-radius:6px;font-size:13px;letter-spacing:2px}
+
+/* Bar */
+.bar{display:flex;justify-content:center;align-items:center;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--sub)}
+.bar .val{color:var(--accent);font-weight:600}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:3px;background:#4caf84}
+
+/* Legend */
+.legend{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--sub)}
+.legend i{display:inline-block;width:18px;height:18px;border-radius:4px;border:2px solid;vertical-align:-4px;margin-right:4px}
+.legend .lf{background:var(--free-bg);border-color:var(--free-bd)}
+.legend .lp{background:var(--pending-bg);border-color:var(--pending-bd)}
+.legend .lm{background:var(--mine-bg);border-color:var(--mine-bd)}
+.legend .lt{background:var(--taken-bg);border-color:var(--taken-bd)}
+.legend .lb{background:var(--bad-bg);border-color:var(--bad-bd)}
+.legend .ll{background:#3a2a1a;border-color:#8b6914}
+
+/* Grid */
+.seat-grid-wrapper{overflow-x:auto;padding:6px 0 10px;width:100%;-webkit-overflow-scrolling:touch}
+.seat-grid{display:flex;flex-direction:column;align-items:center;gap:2px;margin:0 auto;width:fit-content;background:#0f1923;border-radius:10px;padding:12px 14px;box-shadow:0 4px 20px rgba(0,0,0,.4);border:1px solid #1a2a3a}
+.seat-row{display:flex;align-items:center;gap:1px}
+.row-label{width:50px;text-align:right;padding-right:8px;font-size:11px;font-weight:600;color:var(--sub);flex-shrink:0}
+.h-aisle{height:18px;display:flex;align-items:center;justify-content:center;width:100%;margin:2px 0}
+.h-aisle span{color:#5a8a5a;font-size:10px;letter-spacing:3px;padding:0 16px;position:relative}
+.h-aisle span::before,.h-aisle span::after{content:'';position:absolute;top:50%;width:160px;height:1px;background:#3a5a3a}
+.h-aisle span::before{right:100%}.h-aisle span::after{left:100%}
+
+.seat{width:30px;height:30px;border-radius:5px;border:1px solid;cursor:pointer;transition:all .12s;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;user-select:none;flex-shrink:0;min-width:30px;position:relative;-webkit-tap-highlight-color:transparent}
+.seat:active{transform:scale(.9)}
+
+.seat.free{background:var(--free-bg);border-color:var(--free-bd);color:var(--free-tx)}
+.seat.free:hover{background:#3a6a4e;border-color:#6fcf97;transform:scale(1.15);z-index:2;box-shadow:0 0 8px rgba(76,175,132,.4)}
+
+.seat.pending{background:var(--pending-bg);border-color:var(--pending-bd);color:var(--pending-tx);transform:scale(1.06);box-shadow:0 0 6px rgba(200,160,30,.3)}
+.seat.pending:hover{background:#4a4520}
+.seat.pending::after{content:'?';font-size:16px;position:absolute;color:#c49020}
+
+.seat.mine{background:var(--mine-bg);border-color:var(--mine-bd);color:var(--mine-tx);transform:scale(1.06);box-shadow:0 0 6px rgba(66,165,245,.4)}
+.seat.mine:hover{background:#2a4a6c}
+.seat.mine::after{content:'✓';font-size:14px;position:absolute;color:#64b5f6}
+
+.seat.taken{background:var(--taken-bg);border-color:var(--taken-bd);color:var(--taken-tx);cursor:not-allowed;font-size:0}
+.seat.taken::after{content:'✕';font-size:13px;color:#a06020}
+
+.seat.bad{background:var(--bad-bg);border-color:var(--bad-bd);color:#666;cursor:not-allowed}
+.seat.bad::after{content:'✕';font-size:10px;color:#c44}
+.seat.lighting{background:#3a2a1a;border-color:#8b6914;color:#8b6914;cursor:default;font-size:0}
+.seat.lighting::after{content:'💡';font-size:11px}
+.seat.aisle{background:transparent;border:none;cursor:default;pointer-events:none}
+
+/* Confirm Panel - fixed bottom */
+.confirm-panel{
+  position:fixed;bottom:0;left:0;right:0;
+  background:#16213e;border-top:1px solid #2a4560;
+  padding:10px 16px;z-index:100;
+  display:flex;align-items:center;gap:10px;
+  box-shadow:0 -4px 20px rgba(0,0,0,.5);
+  flex-wrap:wrap;justify-content:center;
+}
+.confirm-panel .seat-count{color:var(--accent);font-weight:700;font-size:15px;white-space:nowrap}
+.confirm-panel input{
+  flex:1;min-width:120px;max-width:200px;
+  background:#1e3050;border:1px solid #2a4560;color:var(--text);
+  padding:8px 12px;border-radius:6px;font-size:15px;outline:none;
+  transition:border-color .2s;
+}
+.confirm-panel input:focus{border-color:#42a5f5}
+.confirm-panel input::placeholder{color:#555}
+.confirm-panel button{
+  padding:8px 18px;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s;
+}
+.btn-confirm{background:#d4a030;color:#1a1a2e}.btn-confirm:hover{background:#c49020}
+.btn-confirm:disabled{opacity:.4;cursor:not-allowed}
+.btn-cancel{background:#2a3a50;color:#aaa}.btn-cancel:hover{background:#3a4a60}
+
+/* Sidebar */
+.main-content{display:flex;gap:20px;align-items:flex-start}
+.grid-section{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center}
+.sidebar{width:260px;background:#16213e;border-radius:10px;padding:16px;box-shadow:0 2px 16px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:8px;flex-shrink:0;position:sticky;top:10px;border:1px solid #2a4560;max-height:calc(100vh - 120px);overflow-y:auto}
+.sidebar h3{font-size:13px;font-weight:700;color:var(--accent)}
+.my-seats-list{max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.my-seat-item{display:flex;justify-content:space-between;align-items:center;background:#1a3050;border:1px solid #2a4560;padding:5px 8px;border-radius:5px;font-size:12px}
+.my-seat-item .sl{color:var(--accent);font-weight:600}
+.my-seat-item .remove-btn{background:none;border:none;color:#e57373;cursor:pointer;font-size:14px;padding:0 4px}
+.my-seat-item .remove-btn:hover{color:#ef5350}
+
+.all-seats-list{max-height:200px;overflow-y:auto;font-size:11px;display:flex;flex-direction:column;gap:1px}
+.all-seat-row{display:flex;justify-content:space-between;padding:2px 5px;border-radius:3px}
+.all-seat-row:hover{background:#1a2a3a}
+.all-seat-row .sid{color:var(--accent);min-width:65px}
+.all-seat-row .sowner{color:#90caf9}
+
+.empty-hint{color:#555;text-align:center;font-size:12px;padding:16px 0}
+
+.summary{border-top:1px solid #2a4560;padding-top:8px;display:flex;justify-content:space-between;font-size:12px;font-weight:600}
+.btn-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
+.btn{flex:1;min-width:60px;padding:7px 10px;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:all .15s;text-align:center}
+.btn-accent{background:#d4a030;color:#1a1a2e}.btn-accent:hover{background:#c49020}
+.btn-primary{background:#1976d2;color:#fff}.btn-primary:hover{background:#1565c0}
+.btn-secondary{background:#2a3a50;color:#aaa}.btn-secondary:hover{background:#3a4a60}
+
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1}.toast.err{background:#5c2a2a}
+
+@media(max-width:900px){
+  .main-content{flex-direction:column}
+  .sidebar{width:100%;position:static;max-height:none}
+  .stage{padding:6px 40px;font-size:11px}
+  .seat{width:26px;height:26px;min-width:26px;font-size:8px}
+  .row-label{width:44px;font-size:10px}
+  .seat.pending::after{font-size:13px}
+  .seat.mine::after{font-size:12px}
+  .seat.taken::after{font-size:11px}
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <h1>🎭 凤城剧院座次表</h1>
+    <p class="sub">点击选座 · 选完后输入姓名确认 · 实时同步</p>
+  </div>
+  <div class="stage-area"><div class="stage">⬆ 舞 台 ⬆</div></div>
+  <div class="bar">
+    <div><span class="dot"></span>已选：<span class="val" id="takenCount">0</span> / 557 座</div>
+    <div>待确认：<span class="val" id="pendingCount">0</span> 座</div>
+  </div>
+  <div class="legend">
+    <span><i class="lf"></i>可选</span>
+    <span><i class="lm"></i>我的</span>
+    <span><i class="lp"></i>待确认</span>
+    <span><i class="lt"></i>已选</span>
+    <span><i class="lb"></i>坏座</span>
+    <span><i class="ll"></i>灯光区</span>
+  </div>
+
+  <div class="main-content">
+    <div class="grid-section">
+      <div class="seat-grid-wrapper">
+        <div class="seat-grid" id="seatGrid"></div>
+      </div>
+    </div>
+
+    <div class="sidebar">
+      <h3>📋 全部已选</h3>
+      <div class="all-seats-list" id="allSeatsList"><div class="empty-hint">暂无选座</div></div>
+      <div class="summary"><span>已确认</span><span id="confirmedCount">0 座</span></div>
+      <div class="btn-row">
+        <button class="btn btn-accent" onclick="exportCSV()">📥 导出</button>
+        <button class="btn btn-primary" onclick="copyList()">📋 复制</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm Panel -->
+<div class="confirm-panel" id="confirmPanel" style="display:none">
+  <span class="seat-count" id="panelCount">已选 0 座</span>
+  <input type="text" id="nameInput" placeholder="输入你的姓名/微信名" maxlength="20" autocomplete="off">
+  <button class="btn-confirm" id="confirmBtn" onclick="doConfirm()">确认选座</button>
+  <button class="btn-cancel" onclick="cancelAll()">取消</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="seats_data.js"></script>
+<script>
+// ========== MQTT ==========
+const BROKER = 'wss://broker.hivemq.com:8884/mqtt';
+const TOPIC = 'fengcheng-theater-557/seat/';
+const PENDING_TTL = 5 * 60 * 1000; // 5 min
+
+let client = null;
+let seatState = {}; // seatId -> {name?, pending?, sid?, ts?}
+const mySid = 'sess-' + Math.random().toString(36).slice(2,10);
+let myPending = new Set();
+
+function connectMQTT() {
+  client = mqtt.connect(BROKER, {
+    clientId: 'fc-' + Math.random().toString(36).slice(2,8),
+    clean: true,
+    connectTimeout: 10000,
+    reconnectPeriod: 3000
+  });
+
+  client.on('connect', () => {
+    console.log('[MQTT] OK');
+    client.subscribe(TOPIC + '#', {qos:1}, (err) => {
+      if (err) console.error('sub err', err);
+    });
+  });
+
+  client.on('message', (topic, msg) => {
+    const seatId = topic.toString().replace(TOPIC, '');
+    const payload = msg.toString();
+    if (!payload || payload === 'null') {
+      delete seatState[seatId];
+    } else {
+      try {
+        const data = JSON.parse(payload);
+        // Clean expired pending
+        if (data.pending && data.ts && Date.now() - data.ts > PENDING_TTL) {
+          client.publish(TOPIC + seatId, '', {qos:1, retain:true});
+          return;
+        }
+        seatState[seatId] = data;
+      } catch(e) {}
+    }
+    updateUI();
+  });
+
+  client.on('error', e => console.error('MQTT err', e));
+}
+
+connectMQTT();
+
+// ========== Grid ==========
+function sid(row, num) { return row + '-' + num; }
+
+function updateUI() {
+  renderGrid();
+  updateSidebar();
+  document.getElementById('takenCount').textContent =
+    Object.values(seatState).filter(s => !s.pending).length;
+  document.getElementById('pendingCount').textContent =
+    Object.values(seatState).filter(s => s.pending).length;
+  document.getElementById('confirmedCount').textContent =
+    Object.values(seatState).filter(s => !s.pending).length;
+}
+
+function renderGrid() {
+  const grid = document.getElementById('seatGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  SEAT_DATA.forEach(rd => {
+    if (rd.type === 'aisle') {
+      const d = document.createElement('div');
+      d.className = 'h-aisle';
+      d.innerHTML = '<span>═ 横 过 道 ═</span>';
+      grid.appendChild(d);
+      return;
+    }
+
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'seat-row';
+    const lbl = document.createElement('div');
+    lbl.className = 'row-label';
+    lbl.textContent = rd.label;
+    rowDiv.appendChild(lbl);
+
+    rd.seats.forEach(s => {
+      const el = document.createElement('div');
+      if (s.type === 'aisle') { el.className = 'seat aisle'; rowDiv.appendChild(el); return; }
+      if (s.type === 'bad') { el.className='seat bad'; el.title='损坏'; rowDiv.appendChild(el); return; }
+      if (s.type === 'lighting') { el.className='seat lighting'; el.title='灯光区'; rowDiv.appendChild(el); return; }
+
+      const id = sid(rd.label, s.number);
+      const st = seatState[id];
+      let cls = 'free', title = rd.label + s.number + '号';
+
+      if (st) {
+        if (st.pending) {
+          if (st.sid === mySid) {
+            cls = 'mine';
+            title += ' — 待确认（我的）';
+          } else {
+            cls = 'pending';
+            title += ' — 他人选中，待确认';
+          }
+        } else {
+          cls = 'taken';
+          title += ' — ' + (st.name || '已选');
+        }
+      }
+
+      el.className = 'seat ' + cls;
+      if (!st) el.textContent = s.number;
+      el.title = title;
+      el.addEventListener('click', () => handleClick(id, rd.label, s.number));
+      rowDiv.appendChild(el);
+    });
+
+    grid.appendChild(rowDiv);
+  });
+}
+
+function handleClick(seatId, row, num) {
+  if (!client || !client.connected) { showToast('连接中，请稍候', true); return; }
+
+  const st = seatState[seatId];
+
+  // Already confirmed by someone
+  if (st && !st.pending) {
+    showToast(row + num + '号 已被' + (st.name || '他人') + '选择', true);
+    return;
+  }
+
+  // Pending by someone else
+  if (st && st.pending && st.sid !== mySid) {
+    showToast(row + num + '号 已有他人选中，等待确认', true);
+    return;
+  }
+
+  // My pending seat → toggle off
+  if (st && st.pending && st.sid === mySid) {
+    client.publish(TOPIC + seatId, '', {qos:1, retain:true});
+    myPending.delete(seatId);
+    updateConfirmPanel();
+    return;
+  }
+
+  // Free → reserve
+  const payload = JSON.stringify({pending:true, sid:mySid, ts:Date.now()});
+  client.publish(TOPIC + seatId, payload, {qos:1, retain:true});
+  myPending.add(seatId);
+  updateConfirmPanel();
+}
+
+function updateConfirmPanel() {
+  const panel = document.getElementById('confirmPanel');
+  if (myPending.size === 0) {
+    panel.style.display = 'none';
+    document.getElementById('nameInput').value = '';
+    return;
+  }
+  panel.style.display = 'flex';
+  document.getElementById('panelCount').textContent = '已选 ' + myPending.size + ' 座';
+  document.getElementById('confirmBtn').disabled = false;
+  document.getElementById('nameInput').focus();
+}
+
+// ========== Confirm ==========
+function doConfirm() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) { showToast('请输入姓名', true); return; }
+  if (myPending.size === 0) return;
+
+  document.getElementById('confirmBtn').disabled = true;
+
+  myPending.forEach(seatId => {
+    const payload = JSON.stringify({name: name, ts: Date.now()});
+    client.publish(TOPIC + seatId, payload, {qos:1, retain:true});
+  });
+
+  showToast('已确认 ' + myPending.size + ' 座 → ' + name);
+  myPending.clear();
+  document.getElementById('nameInput').value = '';
+  updateConfirmPanel();
+}
+
+function cancelAll() {
+  if (myPending.size === 0) return;
+  myPending.forEach(seatId => {
+    client.publish(TOPIC + seatId, '', {qos:1, retain:true});
+  });
+  myPending.clear();
+  document.getElementById('nameInput').value = '';
+  updateConfirmPanel();
+  showToast('已取消选择');
+}
+
+// ========== Sidebar ==========
+function updateSidebar() {
+  const entries = Object.entries(seatState);
+  const allList = document.getElementById('allSeatsList');
+
+  if (entries.length === 0) {
+    allList.innerHTML = '<div class="empty-hint">暂无选座</div>';
+    return;
+  }
+
+  const rowOrder = {};
+  SEAT_DATA.forEach((rd,i) => { if(rd.type==='row') rowOrder[rd.label]=i; });
+  entries.sort(([a],[b]) => {
+    const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
+    const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];
+    return ((rowOrder[ra]??999)-(rowOrder[rb]??999)) || (sa-sb);
+  });
+
+  allList.innerHTML = entries.map(([seatId, info]) => {
+    const [r,n] = [seatId.split('-')[0], seatId.split('-').slice(1).join('-')];
+    const tag = info.pending ? '⏳' : '✓';
+    const name = info.pending ? '待确认' : info.name;
+    const me = info.pending && info.sid === mySid;
+    return `<div class="all-seat-row" style="${me?'background:#1a3050':''}">
+      <span class="sid">${tag} ${r}${n}号</span>
+      <span class="sowner">${name}${me?' (我)':''}</span>
+    </div>`;
+  }).join('');
+}
+
+// ========== Export ==========
+function exportCSV() {
+  const confirmed = Object.entries(seatState).filter(([,v]) => !v.pending);
+  if (!confirmed.length) { showToast('无已确认选座', true); return; }
+
+  const rowOrder = {};
+  SEAT_DATA.forEach((rd,i) => { if(rd.type==='row') rowOrder[rd.label]=i; });
+  confirmed.sort(([a],[b]) => {
+    const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
+    const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];
+    return ((rowOrder[ra]??999)-(rowOrder[rb]??999)) || (sa-sb);
+  });
+
+  let csv = '\uFEFF排,座位号,姓名,完整座位\n';
+  confirmed.forEach(([sid,info]) => {
+    const [r,n] = [sid.split('-')[0], sid.split('-').slice(1).join('-')];
+    csv += `${r},${n}号,${info.name},${r}${n}号\n`;
+  });
+  csv += `\n共 ${confirmed.length} 人\n导出: ${new Date().toLocaleString('zh-CN')}\n凤城剧院座次表\n`;
+
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`凤城剧院座次表_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  showToast('已导出 ' + confirmed.length + ' 人');
+}
+
+function copyList() {
+  const confirmed = Object.entries(seatState).filter(([,v]) => !v.pending);
+  if (!confirmed.length) { showToast('无已确认选座', true); return; }
+
+  const rowOrder = {};
+  SEAT_DATA.forEach((rd,i) => { if(rd.type==='row') rowOrder[rd.label]=i; });
+  confirmed.sort(([a],[b]) => {
+    const[ra,sa]=[a.split('-')[0],parseInt(a.split('-')[1])];
+    const[rb,sb]=[b.split('-')[0],parseInt(b.split('-')[1])];
+    return ((rowOrder[ra]??999)-(rowOrder[rb]??999)) || (sa-sb);
+  });
+
+  let text = '凤城剧院座次表\n═══════════════\n';
+  confirmed.forEach(([sid,info]) => {
+    const [r,n] = [sid.split('-')[0], sid.split('-').slice(1).join('-')];
+    text += `${r}${n}号\t${info.name}\n`;
+  });
+  text += `\n共 ${confirmed.length} 人`;
+
+  navigator.clipboard.writeText(text).then(() => showToast('已复制')).catch(() => showToast('复制失败', true));
+}
+
+function showToast(msg, isErr) {
+  const t = document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(isErr?' err':'');
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ========== Periodic cleanup of expired pending ==========
+setInterval(() => {
+  let cleaned = false;
+  Object.entries(seatState).forEach(([seatId, info]) => {
+    if (info.pending && info.ts && Date.now() - info.ts > PENDING_TTL) {
+      client.publish(TOPIC + seatId, '', {qos:1, retain:true});
+      cleaned = true;
+    }
+  });
+}, 30000);
+
+// Enter key in name input
+document.getElementById('nameInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doConfirm();
+});
+</script>
+</body>
+</html>
