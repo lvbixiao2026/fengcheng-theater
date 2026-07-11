@@ -89,7 +89,7 @@ h1{font-size:22px;color:var(--accent);text-align:center}
   document.head.appendChild(s);
 })();
 
-var seatState={}, myPick=null, client;
+var seatState={}, myPicks=[], client;
 
 // Remember user's own seats across sessions
 var myName=localStorage.getItem('fc_myName')||'';
@@ -165,7 +165,7 @@ function render(){
       if(s.type==='lighting'){el.className='seat lighting';el.title='灯光区';row.appendChild(el);continue}
 
       var id=rd.label+'-'+s.number,st=seatState[id],cls='free',title=rd.label+s.number+'号';
-      if(st){cls='taken';title+=' — '+(st.name||'已选')}else if(myPick===id){cls='mine';title+=' — 待确认'}
+      if(st){cls='taken';title+=' — '+(st.name||'已选')}else if(myPicks.indexOf(id)>=0){cls='mine';title+=' — 待确认'}
       // Highlight if this is the user's own confirmed seat
       if(myName && st && st.name===myName) cls='mine';
       el.className='seat '+cls;
@@ -188,38 +188,56 @@ function onSeat(id,row,num){
     toast('你的座位：'+row+num+'号',0);return
   }
   if(st){toast(row+num+'号 已被'+(st.name||'他人')+'选',1);return}
-  if(myPick===id){myPick=null;render();hidePanel();return}
-  myPick=id;render();
-  document.getElementById('pnlSeat').textContent=row+num+'号';
-  document.getElementById('pnlName').value='';
+  // Toggle: if already picked, remove; else add (max 5)
+  var idx=myPicks.indexOf(id);
+  if(idx>=0){myPicks.splice(idx,1);render();updatePanel();return}
+  if(myPicks.length>=5){toast('最多一次选5座',1);return}
+  myPicks.push(id);render();
+  updatePanel();
+}
+
+function updatePanel(){
+  var p=document.getElementById('panel');
+  var cnt=myPicks.length;
+  if(cnt===0){hidePanel();return}
+  p.style.display='flex';
+  document.getElementById('pnlSeat').textContent='已选 '+cnt+'/5 座';
   document.getElementById('btnOk').disabled=false;
-  document.getElementById('panel').style.display='flex';
+  // Show picked seat names
+  var labels=[];
+  myPicks.forEach(function(sid){labels.push(sid.replace('-','')+'号')});
+  document.getElementById('pnlSeat').textContent='已选 '+cnt+'/5 座：'+labels.join(', ');
   document.getElementById('pnlName').focus();
 }
 
 function confirmSeat(){
   var n=document.getElementById('pnlName').value.trim();
   if(!n){toast('请输入微信名',1);return}
+  if(myPicks.length===0){return}
   // Count how many seats this name already has
   var myCount=0;
   Object.values(seatState).forEach(function(v){if(v.name===n)myCount++});
-  if(myCount>=5){toast(n+' 已经选了 '+myCount+' 座，每人最多5座',1);return}
+  if(myCount+myPicks.length>5){toast(n+' 已有 '+myCount+' 座，加上这 '+myPicks.length+' 座超过5座上限',1);return}
   // If name changed from previous, reset localStorage
   if(n!==myName){myName=n;mySeatIds=[];localStorage.setItem('fc_myName',n);localStorage.setItem('fc_mySeats','[]')}
   document.getElementById('btnOk').disabled=true;
-  var p=JSON.stringify({name:n,ts:Date.now()});
-  client.publish('fengcheng-theater-557/seat/'+myPick,p,{qos:1,retain:true});
-  if(typeof mqtt==='undefined')seatState[myPick]={name:n,ts:Date.now()};
-  // Remember for next visit
+  // Confirm all picked seats at once
+  var ids=myPicks.slice();
+  myPicks=[];hidePanel();
+  ids.forEach(function(sid){
+    var p=JSON.stringify({name:n,ts:Date.now()});
+    client.publish('fengcheng-theater-557/seat/'+sid,p,{qos:1,retain:true});
+    if(typeof mqtt==='undefined')seatState[sid]={name:n,ts:Date.now()};
+    if(mySeatIds.indexOf(sid)<0)mySeatIds.push(sid);
+  });
   myName=n;
-  if(mySeatIds.indexOf(myPick)<0) mySeatIds.push(myPick);
   localStorage.setItem('fc_myName',n);
   localStorage.setItem('fc_mySeats',JSON.stringify(mySeatIds));
-  toast('已选座 → '+n+' ('+myPick.replace('-','')+'号)');
-  myPick=null;hidePanel();render();
+  toast('已选 '+ids.length+' 座 → '+n);
+  render();
 }
 
-function cancelPick(){myPick=null;render();hidePanel()}
+function cancelPick(){myPicks=[];render();hidePanel()}
 function hidePanel(){document.getElementById('panel').style.display='none';document.getElementById('pnlName').value=''}
 function toast(m,e){var t=document.getElementById('toast');t.textContent=m;t.className='toast'+(e?' err':'');t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show')},2200)}
 document.getElementById('pnlName').addEventListener('keydown',function(e){if(e.key==='Enter')confirmSeat()});
